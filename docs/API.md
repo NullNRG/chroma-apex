@@ -10,7 +10,7 @@ Public header: core/include/chroma_apex.h. Build target: chroma_apex shared libr
 | apx_order_u64(keys, n, out, stats) | const uint64_t* | uint32_t* | Stable ascending unsigned 64-bit ordering |
 | apx_order_i64(keys, n, out, stats) | const int64_t* | uint32_t* | Stable ascending signed 64-bit ordering |
 | apx_status_string(status) | integer status | const char* | Human-readable error |
-| apx_abi_version() | none | uint32_t | (major << 16) | minor |
+| apx_abi_version() | none | uint32_t | Major shifted by 16 bits, bitwise OR minor |
 
 The final column above describes the ABI version encoding as bitwise OR of shifted major and minor components.
 
