@@ -116,3 +116,7 @@ MIT. See [LICENSE](LICENSE) and [Licensing](docs/LICENSING.md). CHROMA APEX is a
 ## LLM token sampling integration
 
 A standalone [APEX LLM CPU sampler](integrations/llm/README.md) adds adaptive top-k, top-p, temperature, and greedy token selection. It provides a C++17 library, a PyTorch autoregressive decoder integration, an optional llama.cpp sampler adapter, correctness tests and [reproducible benchmarks](integrations/llm/ENGINE_REPORT.md). The model tests use untrained decoder configurations; no pretrained GGUF or Hugging Face model is included. The CPU-only measurements do not establish GPU or production-model acceleration.
+
+### Pretrained causal-LM integration
+
+An [APEX next-token selector for Hugging Face causal models](integrations/llm/pretrained/README.md) integrates native sampling into an actual KV-cache decoding loop and offers adaptive dispatch between APEX and device-resident PyTorch. The [CPU selection results](integrations/llm/pretrained/BENCHMARKS.md) are diagnostic synthetic-logit measurements; no pretrained checkpoint was executable on the offline test host.

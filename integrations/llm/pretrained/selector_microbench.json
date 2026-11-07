@@ -1,0 +1,156 @@
+{
+  "environment": {
+    "torch_version": "2.10.0+cpu",
+    "threads": 1,
+    "device": "cpu",
+    "pretrained_model_weights": false,
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "cases": [
+    {
+      "n": 8192,
+      "distribution": "normal",
+      "top_k": 40,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 36.205,
+        "torch_topk": 129.856,
+        "torch_optimized": 63.178,
+        "adaptive": 36.579
+      },
+      "apex_vs_torch_topk_speedup": 3.587,
+      "apex_vs_optimized_speedup": 1.745,
+      "adaptive_vs_optimized_speedup": 1.727,
+      "exact_reference_token": 7263,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 50257,
+      "distribution": "normal",
+      "top_k": 40,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 307.086,
+        "torch_topk": 361.543,
+        "torch_optimized": 149.729,
+        "adaptive": 153.733
+      },
+      "apex_vs_torch_topk_speedup": 1.177,
+      "apex_vs_optimized_speedup": 0.488,
+      "adaptive_vs_optimized_speedup": 0.974,
+      "exact_reference_token": 3691,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 50257,
+      "distribution": "peaky",
+      "top_k": 40,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 291.663,
+        "torch_topk": 352.098,
+        "torch_optimized": 144.727,
+        "adaptive": 155.179
+      },
+      "apex_vs_torch_topk_speedup": 1.207,
+      "apex_vs_optimized_speedup": 0.496,
+      "adaptive_vs_optimized_speedup": 0.933,
+      "exact_reference_token": 15915,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 50257,
+      "distribution": "normal",
+      "top_k": 0,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 972.504,
+        "torch_topk": 5287.196,
+        "torch_optimized": 4279.24,
+        "adaptive": 975.58
+      },
+      "apex_vs_torch_topk_speedup": 5.437,
+      "apex_vs_optimized_speedup": 4.4,
+      "adaptive_vs_optimized_speedup": 4.386,
+      "exact_reference_token": 61,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 50257,
+      "distribution": "ties",
+      "top_k": 40,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 280.116,
+        "torch_topk": 340.237,
+        "torch_optimized": 136.658,
+        "adaptive": 146.752
+      },
+      "apex_vs_torch_topk_speedup": 1.215,
+      "apex_vs_optimized_speedup": 0.488,
+      "adaptive_vs_optimized_speedup": 0.931,
+      "exact_reference_token": 315,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 128256,
+      "distribution": "normal",
+      "top_k": 40,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 759.208,
+        "torch_topk": 731.342,
+        "torch_optimized": 273.749,
+        "adaptive": 276.956
+      },
+      "apex_vs_torch_topk_speedup": 0.963,
+      "apex_vs_optimized_speedup": 0.361,
+      "adaptive_vs_optimized_speedup": 0.988,
+      "exact_reference_token": 115359,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 128256,
+      "distribution": "normal",
+      "top_k": 0,
+      "top_p": 0.95,
+      "median_us_per_token": {
+        "apex": 2481.2,
+        "torch_topk": 14998.364,
+        "torch_optimized": 11267.792,
+        "adaptive": 2539.973
+      },
+      "apex_vs_torch_topk_speedup": 6.045,
+      "apex_vs_optimized_speedup": 4.541,
+      "adaptive_vs_optimized_speedup": 4.436,
+      "exact_reference_token": 91988,
+      "samples_per_round": 100,
+      "rounds": 5
+    },
+    {
+      "n": 50257,
+      "distribution": "normal",
+      "top_k": 1,
+      "top_p": 1.0,
+      "median_us_per_token": {
+        "apex": 51.561,
+        "torch_topk": 242.36,
+        "torch_optimized": 49.83,
+        "adaptive": 47.751
+      },
+      "apex_vs_torch_topk_speedup": 4.7,
+      "apex_vs_optimized_speedup": 0.966,
+      "adaptive_vs_optimized_speedup": 1.044,
+      "exact_reference_token": 49816,
+      "samples_per_round": 100,
+      "rounds": 5
+    }
+  ]
+}

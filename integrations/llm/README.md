@@ -74,3 +74,7 @@ See [report](ENGINE_REPORT.md) for detailed measurements, alternative optimized 
 ## License
 
 MIT, consistent with CHROMA APEX. See [LICENSE](LICENSE). No llama.cpp code or pretrained model weights are bundled.
+
+## Pretrained causal-LM integration
+
+[Pretrained model inference engine](pretrained/README.md) provides a Hugging Face `AutoModelForCausalLM` KV-cached generation loop with three selector baselines, a device-aware adaptive APEX dispatcher, and a public `model.generate()` adapter. Native CPU selection is benchmarked against optimized PyTorch on 8K–128K vocabulary tensors. [Results and limitations](pretrained/BENCHMARKS.md) distinguish synthetic-logit microbenchmarks from unexecuted pretrained checkpoints. No model weights are bundled.
