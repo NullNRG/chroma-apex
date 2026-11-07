@@ -1,0 +1,13 @@
+/build/
+/build_san/
+*.so
+*.dylib
+*.dll
+*.o
+*.a
+*.exe
+*.pyc
+__pycache__/
+*.jsonl.tmp
+*.swp
+.DS_Store

@@ -1,0 +1,8 @@
+[package]
+name = "chroma-apex-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "FFI binding to CHROMA APEX native stable numeric key sorting"
+[lib]
+path = "src/lib.rs"

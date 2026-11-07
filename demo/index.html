@@ -1,0 +1,1817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d14">
+  <meta name="description" content="APEX X offline sorting speed lab, packed numeric-key projection, embedded scalar/SIMD128 WebAssembly, stable ordering and live benchmarks.">
+  <title>CHROMA APEX XL / Massive & Complex Data Sorting</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#0a0d14; --panel:#111723; --panel2:#151d2b; --muted:#8794aa;
+      --text:#f3f7ff; --line:rgba(163,188,228,.12);
+      --cyan:#00d2ff; --violet:#7928ca; --pink:#ff0080;
+      --coral:#ff385c; --green:#00f59b;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-synthesis:none;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0;min-height:100dvh;color:var(--text);background:radial-gradient(ellipse 70% 32% at 50% -14%,rgba(121,40,202,.18),transparent 85%),var(--bg);overflow-x:hidden}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:4px}
+    .shell{width:min(1100px,100%);margin:0 auto;padding:clamp(18px,3.8vw,46px) clamp(14px,3.2vw,36px) 36px}
+    .topline,.meta,.race-label,.section-heading,.stat-label,.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;text-transform:uppercase}
+    .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#91a1b9}
+    .brand{display:flex;align-items:center;gap:10px;color:#e7f7ff}
+    .brand-mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(140deg,var(--cyan) 2%,var(--violet) 54%,var(--pink) 96%);box-shadow:0 0 24px rgba(121,40,202,.22);position:relative}
+    .brand-mark::after{content:"";position:absolute;inset:6px;border-radius:2px;background:#111723;transform:rotate(35deg)}
+    .top-right{display:flex;align-items:center;gap:9px;white-space:nowrap}
+    .live-dot{height:7px;width:7px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green)}
+    .intro{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:27px 0 25px}
+    .intro h1{font-size:clamp(31px,6vw,58px);line-height:1.01;letter-spacing:-.065em;font-weight:850;margin:0 0 11px}
+    .intro h1 span{background:linear-gradient(95deg,var(--cyan),#a880ff 53%,var(--pink));color:transparent;background-clip:text;-webkit-background-clip:text}
+    .intro p{margin:0;color:var(--muted);font-size:13px;line-height:1.65;max-width:580px}
+    .seed-tag{font-size:11px;white-space:nowrap;background:var(--panel);padding:11px 13px;border:1px solid var(--line);border-radius:10px;color:#a8b6ca;font-variant-numeric:tabular-nums}
+    .seed-tag strong{color:#e5edf9;font-weight:650}
+    .arena{background:linear-gradient(180deg,rgba(24,33,50,.90),rgba(11,16,25,.95));border:1px solid var(--line);border-radius:18px;box-shadow:0 32px 95px rgba(0,0,0,.21);overflow:hidden}
+    .arena-head{padding:22px clamp(16px,3vw,27px) 17px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .eyebrow{color:var(--cyan);display:flex;align-items:center;gap:9px;margin:0 0 6px}
+    .eyebrow::before{content:"";width:5px;height:5px;background:currentColor;border-radius:50%}
+    .sort-title{font-size:clamp(17px,3vw,25px);font-weight:775;letter-spacing:-.035em;line-height:1.2;margin:0}
+    .phase-pill{border-radius:999px;background:rgba(0,210,255,.075);border:1px solid rgba(0,210,255,.19);color:#80e6ff;font-size:11px;letter-spacing:.09em;font-weight:800;padding:9px 13px;white-space:nowrap}
+    .stats{padding:0 clamp(16px,3vw,27px) 17px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+    .stat{border:1px solid var(--line);background:rgba(3,7,13,.3);border-radius:10px;padding:12px 13px;min-width:0}
+    .stat-label{color:#8697af;letter-spacing:.095em;font-size:9px}
+    .stat-number{font-size:clamp(18px,3.6vw,29px);line-height:1.3;font-weight:780;font-variant-numeric:tabular-nums;letter-spacing:-.035em;margin:5px 0 0}
+    .stat:last-child .stat-number{color:#a7edff}
+    .visual-wrap{position:relative;border-top:1px solid rgba(136,162,207,.07);border-bottom:1px solid var(--line);margin:0 10px;background:radial-gradient(ellipse 67% 60% at 50% 100%,rgba(121,40,202,.09),transparent 98%)}
+    #viz{width:100%;height:clamp(290px,47vh,550px);display:block}
+    .chart-top{position:absolute;top:14px;left:17px;right:17px;pointer-events:none;display:flex;justify-content:space-between;gap:12px;font-size:10px;letter-spacing:.1em;font-weight:700;color:#7688a5}
+    .chart-top .right{color:#8fa0bd;text-align:right}
+    .chart-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .22s}
+    .chart-overlay.visible{opacity:1}
+    .chart-overlay span{font-size:clamp(17px,4vw,30px);font-weight:850;letter-spacing:.12em;color:var(--green);background:rgba(10,13,20,.82);padding:12px 22px;border:1px solid rgba(0,245,155,.35);border-radius:12px;box-shadow:0 0 50px rgba(0,245,155,.1)}
+    .controls{padding:20px clamp(16px,3vw,27px) 22px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+    .btn{min-height:42px;border-radius:10px;border:1px solid var(--line);padding:0 17px;background:#192232;color:#eaf3ff;font-size:12px;font-weight:760;letter-spacing:.01em;transition:background .16s,transform .12s}
+    .btn:hover{background:#243147}
+    .btn:active{transform:scale(.975)}
+    .btn-primary{border:0;background:linear-gradient(110deg,#00bde9,#684ae8);color:white;min-width:116px;box-shadow:0 5px 22px rgba(0,144,255,.13)}
+    .btn-primary:hover{background:linear-gradient(110deg,#00d2ff,#7956f3)}
+    .btn:disabled{opacity:.47;cursor:not-allowed}
+    .speed-control{display:flex;align-items:center;gap:10px;flex:1 1 230px;min-width:185px;margin-left:auto}
+    .speed-control label{font-size:11px;font-weight:760;color:#afbdd0;white-space:nowrap}
+    #speed{width:100%;accent-color:#40cbff;cursor:pointer;min-width:80px}
+    output{font-size:11px;color:#c4d7eb;font-variant-numeric:tabular-nums;min-width:73px;text-align:right}
+    .sound{min-width:94px}
+    .sound.off{color:#8090a6}
+    .lower{display:grid;grid-template-columns:1fr 1.05fr;gap:22px;margin-top:27px}
+    .section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#c9d5e7;margin:0 0 14px}
+    .section-heading .minor{color:#70839e;letter-spacing:.06em;font-size:10px;font-weight:600;text-transform:none}
+    .competitors{display:grid;gap:9px}
+    .competitor{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:rgba(18,25,38,.7);min-width:0}
+    .comp-index{display:grid;place-items:center;width:32px;height:32px;flex-shrink:0;border-radius:9px;background:#1d2738;color:#879db7;font-size:11px;font-weight:850}
+    .competitor.active{border-color:rgba(0,210,255,.42);background:linear-gradient(95deg,rgba(0,210,255,.09),rgba(17,23,35,.6))}
+    .competitor.active .comp-index{background:#00435e;color:#96eaff}
+    .competitor.done .comp-index{background:rgba(0,245,155,.13);color:var(--green)}
+    .comp-text{min-width:0;flex:1}
+    .comp-title{font-size:12px;line-height:1.38;font-weight:760;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .comp-sub{font-size:10px;color:#7b8ca5;margin-top:4px;font-variant-numeric:tabular-nums}
+    .comp-state{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8498b5;white-space:nowrap;font-weight:770}
+    .competitor.active .comp-state{color:var(--cyan)}
+    .competitor.done .comp-state{color:var(--green)}
+    .board{border:1px solid var(--line);border-radius:12px;min-height:217px;padding:17px;background:rgba(17,23,35,.7)}
+    .board-empty{height:100%;min-height:178px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:8px;color:#8294ad;font-size:12px}
+    .board-icon{display:grid;place-items:center;width:39px;height:39px;border-radius:12px;background:linear-gradient(130deg,rgba(0,210,255,.16),rgba(255,0,128,.15));color:#d2d7ff;font-size:21px}
+    .board-row{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:9px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+    .board-row:first-child{border-top:0}
+    .rank{font-size:13px;font-weight:850;color:#8da0ba}
+    .board-row:first-child .rank{color:var(--green)}
+    .board-name{min-width:0;font-size:11px;font-weight:790;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .board-detail{color:#8597ae;font-size:10px;margin-top:4px;font-variant-numeric:tabular-nums}
+    .board-ops{font-weight:830;letter-spacing:-.025em;font-variant-numeric:tabular-nums;font-size:15px;text-align:right}
+    .board-ops small{display:block;font-weight:570;color:#8494ab;letter-spacing:0;font-size:9px}
+    .note{color:#71829b;line-height:1.6;font-size:11px;margin:18px 0 0}
+    .note strong{color:#9ab0c9}
+    .legend{display:flex;gap:16px;flex-wrap:wrap;color:#91a1ba;font-size:10px;margin-top:13px}
+    .legend-item{display:flex;align-items:center;gap:7px}
+    .swatch{width:9px;height:9px;border-radius:2px;background:linear-gradient(125deg,var(--cyan),var(--violet),var(--pink))}
+    .swatch.read{background:white}.swatch.write{background:var(--coral)}.swatch.sorted{background:var(--green)}
+    .footer{display:flex;align-items:center;justify-content:space-between;gap:15px;color:#667a96;font-size:10px;letter-spacing:.035em;margin-top:23px;flex-wrap:wrap}
+    @media(max-width:720px){.lower{grid-template-columns:1fr;gap:22px}.intro{align-items:flex-start;flex-direction:column}.seed-tag{align-self:flex-start}.controls{gap:9px}.speed-control{flex-basis:100%;margin-left:0;order:4}.arena-head{padding-top:18px}.stat{padding:10px}.stats{gap:6px}.visual-wrap{margin:0 5px}#viz{height:clamp(310px,49dvh,500px)}}
+    @media(max-width:370px){.shell{padding-left:10px;padding-right:10px}.stat-number{font-size:17px}.sort-title{font-size:16px}.phase-pill{font-size:10px}.top-right{font-size:9px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+    .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .dataset-control{display:flex;align-items:center;gap:8px;font-size:11px;color:#9eabc0}
+    .dataset-control select{border:1px solid var(--line);color:var(--text);background:var(--panel2);border-radius:9px;padding:10px 12px;font:inherit;font-size:11px;max-width:185px}
+    .dataset-control select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+    .btn-benchmark{border-color:rgba(0,245,155,.38);color:#a5ffda}
+    .stat-number{font-variant-numeric:tabular-nums}
+    @media(max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dataset-control{flex-basis:100%;justify-content:space-between}.dataset-control select{max-width:none;flex:1}}
+
+    .speed-lab{border:1px solid rgba(0,210,255,.22);border-radius:17px;margin-top:26px;padding:clamp(16px,3vw,25px);background:linear-gradient(160deg,rgba(0,210,255,.065),rgba(19,25,40,.85) 55%,rgba(121,40,202,.06))}
+    .speed-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:18px;margin-bottom:16px}
+    .speed-head h2{font-size:clamp(18px,3vw,25px);letter-spacing:-.04em;margin:4px 0 6px}
+    .speed-head p{font-size:11px;max-width:650px;color:#9bb0c9;line-height:1.6;margin:0}
+    .speed-badge{font-size:10px;font-weight:790;letter-spacing:.1em;color:#00f59b;background:rgba(0,245,155,.07);padding:9px 11px;border:1px solid rgba(0,245,155,.18);border-radius:8px;white-space:nowrap}
+    .speed-tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+    .speed-tools select{padding:10px 12px;background:#172233;color:#eaf3ff;border:1px solid rgba(164,190,226,.22);border-radius:8px;font-size:12px}
+    .speed-status{font-size:11px;color:#8ba4c3;line-height:1.5;margin:8px 0 13px;min-height:15px}
+    .speed-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+    .speed-table{border-collapse:collapse;table-layout:auto;min-width:500px;width:100%;font-size:11px;font-variant-numeric:tabular-nums}
+    .speed-table th,.speed-table td{text-align:left;padding:12px 10px;border-bottom:1px solid rgba(155,180,215,.09)}
+    .speed-table tr:last-child td{border-bottom:0}
+    .speed-table th{background:#151f2d;color:#8da4c0;letter-spacing:.1em;font-size:9px;text-transform:uppercase}
+    .speed-table td:nth-child(2),.speed-table td:nth-child(3){font-weight:800;color:#dcecff}
+    .speed-table tr:first-child td:nth-child(2){color:var(--green)}
+    .speed-table .primary{font-weight:790;color:#95e9ff}
+    .speed-foot{margin:11px 0 0;color:#8296b0;font-size:10px;line-height:1.7}
+  
+.xl-lab{margin-top:25px;border:1px solid rgba(126,170,216,.2);border-radius:18px;background:linear-gradient(145deg,#111b2a,#0b101b);padding:25px clamp(16px,2.5vw,26px)}
+.xl-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.xl-header h2{font-size:clamp(23px,4vw,31px);letter-spacing:-.055em;margin:4px 0 6px}
+.xl-header p{font-size:12px;color:#93a7bf;max-width:760px;line-height:1.6;margin:0}
+.xl-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:22px 0 12px}
+.xl-controls label{display:flex;flex-direction:column;gap:5px;color:#9caec7;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:750}
+.xl-controls select{padding:10px;border:1px solid rgba(160,191,230,.22);color:#eaf7ff;background:#172233;border-radius:8px;font-size:12px;min-height:41px;max-width:100%}
+.xl-controls button{align-self:flex-end}
+.xl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.xl-kpi{background:rgba(11,17,26,.88);border:1px solid rgba(146,185,229,.13);border-radius:11px;padding:14px}
+.xl-kpi span{font-size:10px;letter-spacing:.12em;color:#8ba3bc;text-transform:uppercase;font-weight:800}
+.xl-kpi strong{display:block;font-size:clamp(16px,3vw,26px);margin-top:5px;letter-spacing:-.05em;color:#dceeff;font-variant-numeric:tabular-nums}
+.xl-note{font-size:11px;line-height:1.7;color:#9babbd}
+.xl-table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums;min-width:410px}
+.xl-table th,.xl-table td{padding:11px 9px;border-bottom:1px solid rgba(143,170,204,.12);text-align:left}
+.xl-table th{color:#8ca5c1;font-size:10px;background:rgba(20,33,49,.7)}
+.xl-table td:nth-child(2){font-weight:800;color:#e9f7ff}
+.xl-status{padding:12px 14px;background:rgba(0,210,255,.055);border:1px solid rgba(0,210,255,.14);border-radius:10px;color:#a2dffc;font-size:11px;line-height:1.6;margin-top:12px}
+@media(max-width:640px){.xl-grid{grid-template-columns:1fr 1fr}.xl-controls label{flex:1 1 120px}.xl-controls button{width:100%}}
+
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topline">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>CHROMA / APEX X — SIMD SPEED LAB</span></div>
+      <div class="top-right"><span class="live-dot" aria-hidden="true"></span><span>SIGNAL / WAVEFORM BENCHMARK</span></div>
+    </header>
+
+    <section class="intro" aria-label="Introduction">
+      <div>
+        <h1>APEX XL <span>Speed Lab.</span></h1>
+        <p>Benchmark exact stable sorting on real records. APEX X packages SIMD128 and scalar WebAssembly kernels directly inside this offline HTML, with an adaptive JavaScript fallback. Compare real CPU time, not animation events.</p>
+      </div>
+      <div class="seed-tag">INPUT SEED <strong>0xC0FFEE</strong> · 120 RECORDS</div>
+    </section>
+
+    <section class="arena" aria-label="Sorting visualization and controls">
+      <div class="arena-head">
+        <div><p class="eyebrow" id="activity">READY TO RACE</p><h2 class="sort-title" id="sortTitle">APEX X / Packed SIMD & Adaptive</h2></div>
+        <div class="phase-pill" id="phase">SORT 1 / 5</div>
+      </div>
+      <div class="stats" role="group" aria-label="Current algorithm telemetry">
+        <div class="stat"><div class="stat-label">Compares</div><div class="stat-number" id="compares">0</div></div>
+        <div class="stat"><div class="stat-label">Probes / metric reads</div><div class="stat-number" id="probes">0</div></div>
+        <div class="stat"><div class="stat-label">Writes</div><div class="stat-number" id="writes">0</div></div>
+        <div class="stat"><div class="stat-label">Total operations</div><div class="stat-number" id="ops">0</div></div>
+      </div>
+      <div class="visual-wrap">
+        <canvas id="viz" role="img" aria-label="120 vertical bars visualizing each record's compound balance metric, with comparison, write, and completion highlights"></canvas>
+        <div class="chart-top"><span id="chartHint">WEIGHT METRIC / ASCENDING TARGET</span><span class="right">120 BARS · OPERATION REPLAY</span></div>
+        <div class="chart-overlay" id="overlay" aria-hidden="true"><span id="overlayText">VERIFIED ✓</span></div>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" id="run" type="button">▶ Run race</button>
+        <button class="btn" id="reset" type="button">↺ Reset</button>
+        <button class="btn btn-benchmark" id="bench" type="button">⚡ Replay benchmark</button>
+        <button class="btn sound" id="sound" type="button" aria-pressed="true">♫ Sound on</button>
+        <div class="dataset-control"><label for="dataset">Signal</label><select id="dataset" aria-label="Input distribution"><option value="random">Random / default</option><option value="sorted">Already sorted</option><option value="bursts">Three noise bursts</option><option value="near">Near sorted / spikes</option><option value="reverse">Reverse</option><option value="ties">Heavy duplicates</option><option value="floats">Continuous floats</option></select></div>
+        <div class="speed-control"><label for="speed">Speed</label><input id="speed" type="range" min="100" max="24000" value="2400" step="100" aria-label="Generator events per second"><output id="speedOut" for="speed">2,400 ev/s</output></div>
+      </div>
+    </section>
+
+    <div class="legend" aria-label="Visual legend">
+      <span class="legend-item"><i class="swatch"></i>Raw metric</span>
+      <span class="legend-item"><i class="swatch read"></i>Compared / probed</span>
+      <span class="legend-item"><i class="swatch write"></i>Written / cycle placed</span>
+      <span class="legend-item"><i class="swatch sorted"></i>Verified sweep</span>
+    </div>
+
+    <div class="lower">
+      <section aria-label="Algorithm contestants"><h3 class="section-heading">THE CONTENDERS <span class="minor">same seed, independent copy</span></h3><div class="competitors" id="contenders"></div></section>
+      <section aria-label="Leaderboard"><h3 class="section-heading">LEADERBOARD <span class="minor" id="boardCaption">replay work (not CPU ranking)</span></h3><div class="board" id="leaderboard" aria-live="polite"></div></section>
+    </div>
+    <p class="note"><strong>Scoring:</strong> Replay counts include only exposed metric probes, comparisons and main-array writes; internal histogram/radix work is not included. APEX completes its real work first and replays movements for the animation. <strong>Use the production speed lab below for comparable CPU timings.</strong> Equal metric values retain input order. Animation speed never affects measured CPU times.</p>
+
+    <section class="speed-lab" aria-label="Production speed benchmarking">
+      <div class="speed-head">
+        <div><p class="eyebrow">LIVE LOCAL CPU BENCHMARK</p><h2>Speed arena / fair identical inputs</h2><p>Production execution only: identical stable records, exact compound-metric computation and payload reconstruction, warmup, and five timed batches. Wasm transfer cost is included. Animation and audio are excluded.</p></div>
+        <span class="speed-badge">TIMING ≠ OPERATION COUNT</span>
+      </div>
+      <div class="speed-tools">
+        <select id="speedSize" aria-label="Benchmark record count">
+          <option value="120">120 records · animation scale</option>
+          <option value="1000">1,000 records</option>
+          <option value="10000" selected>10,000 records</option>
+          <option value="50000">50,000 records</option>
+        </select>
+        <button class="btn btn-primary" id="speedRun" type="button">⏱ Run real speed trials</button>
+      </div>
+      <div class="speed-status" id="speedStatus" aria-live="polite">Run to see which algorithm is fastest in your own browser on the selected signal.</div>
+      <div class="speed-table-wrap"><table class="speed-table"><thead><tr><th>Rank / algorithm</th><th>Median time</th><th>vs fastest</th><th>Verification / technique</th></tr></thead><tbody id="speedResults"><tr><td colspan="4">No measurements yet · same data and same stable-order oracle for every eligible implementation.</td></tr></tbody></table></div>
+      <p class="speed-foot">Wasm scalar and SIMD128 use genuine compiled binaries embedded in this HTML. Transfers into/out of Wasm count toward timings; they cannot be compared directly with native C++ timings. Compact counting is N/A for continuous keys, never rounded. Results vary by browser and CPU; no world record or originality claim. All methods preserve exact stable order.</p>
+    </section>
+
+<section class="xl-lab" aria-label="APEX XL massive complex record benchmark">
+ <div class="xl-header">
+  <div><p class="eyebrow">MASSIVE DATA · COMPLEX TYPES · REAL CPU TIMINGS</p><h2>APEX XL <span style="color:#9c9bff">/ Schema Lab</span></h2>
+  <p>Sort large, nested records without shuffling their payload during key comparisons. Stable multi-column fields, UTF-16 strings, numbers, dates, arrays, nulls and BigInts. Worker-based local benchmark prevents the race UI from freezing. For multi-gigabyte JSONL use the separate bounded-memory Node streaming tool in the project ZIP.</p></div>
+  <div class="phase-pill">VERIFIED / LOCAL ONLY</div>
+ </div>
+ <div class="xl-controls">
+   <label>Record structure<select id="xlPattern"><option value="nested">Nested composite · 4 fields</option><option value="mixed">Mixed string / null / arrays</option><option value="balance">Legacy compound balance</option><option value="numeric">Numeric continuous</option><option value="sparse">Sparse disorder · noise rays</option></select></label>
+   <label>Records<select id="xlN"><option value="10000">10,000</option><option value="50000" selected>50,000</option><option value="150000">150,000</option><option value="300000">300,000</option></select></label>
+   <label>Payload per record<select id="xlPayload"><option value="0">0 B</option><option value="128" selected>128 B</option><option value="512">512 B</option></select></label>
+   <button type="button" class="btn btn-primary" id="xlRun">⚡ Benchmark complex types</button>
+ </div>
+ <div class="xl-grid"><div class="xl-kpi"><span>Records</span><strong id="xlRecords">—</strong></div><div class="xl-kpi"><span>Estimated payload</span><strong id="xlBytes">—</strong></div><div class="xl-kpi"><span>Best verified</span><strong id="xlWinner">—</strong></div></div>
+ <div style="overflow-x:auto"><table class="xl-table"><thead><tr><th>Method</th><th>Median, ms</th><th>Relative speed</th><th>Stable / exact</th></tr></thead><tbody id="xlTable"><tr><td colspan="4">Run a benchmark to compare the same complete output order. Tests include object reconstruction and key extraction.</td></tr></tbody></table></div>
+ <div class="xl-status" id="xlStatus" aria-live="polite">Ready. All benchmarks are local; nothing is uploaded.</div>
+ <p class="xl-note">The “native” comparisons here mean <strong>JavaScript Array.sort</strong>, not native C++ IPS⁴o or Typhoon. The optional native C++ benchmark harness and honest external-paper comparison are included in the ZIP. Do not infer a world record from any individual input.</p>
+</section>
+
+    <footer class="footer"><span>100% OFFLINE · WASM SIMD128 + SCALAR · VANILLA JS FALLBACK · NO EXTERNAL LIBRARIES</span><span id="statusLine" role="status">Press Run to begin · Sound unlocks after interaction</span></footer>
+  </main>
+
+  <script>
+/* Inline dependency-free packed sorter + actual binary SIMD/scalar WebAssembly. */
+'use strict';
+/** CHROMA APEX X / packed metric + stable index kernels.
+ * Native WebAssembly scalar and SIMD backends are optional; JS fallback works offline.
+ * Uses known counting/radix/merge techniques. No claim of new algorithmic originality.
+ * Exact key: rawWeight + length*1.5 + (sum(subTokens)%7).
+ */
+(function(root,factory){
+  const api=factory();
+  if (typeof module==='object' && module.exports) module.exports=api;
+  else root.ChromaApexX=api;
+})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  function fromBase64(data){
+    if(typeof data!=='string') return data;
+    if(typeof Buffer!=='undefined')return Uint8Array.from(Buffer.from(data,'base64'));
+    const s=atob(data),out=new Uint8Array(s.length);
+    for(let i=0;i<s.length;i++)out[i]=s.charCodeAt(i);
+    return out;
+  }
+  function backend(bytes){
+    if(!bytes || typeof WebAssembly==='undefined')return null;
+    try {
+      const module=new WebAssembly.Module(fromBase64(bytes));
+      const instance=new WebAssembly.Instance(module,{});
+      return {exports:instance.exports,memory:instance.exports.memory,base:((instance.exports.__heap_base.value+15)&~15)};
+    }catch(err){return {unavailable:String(err)}}
+  }
+  function balance(r){
+    if(!r||!Number.isFinite(r.rawWeight)||typeof r.entropySeed!=='string'||!Array.isArray(r.subTokens))throw new TypeError('Invalid record');
+    let sum=0,t=r.subTokens;
+    if(t.length===3){if(!Number.isFinite(t[0])||!Number.isFinite(t[1])||!Number.isFinite(t[2]))throw new TypeError('Invalid subToken');sum=t[0]+t[1]+t[2];}
+    else for(let j=0;j<t.length;j++){if(!Number.isFinite(t[j]))throw new TypeError('Invalid subToken');sum+=t[j];}
+    const w=r.rawWeight+r.entropySeed.length*1.5+(sum%7);
+    if(!Number.isFinite(w))throw new TypeError('Nonfinite balance metric');
+    return w===0?0:w;
+  }
+  function createApexX(options={}){
+    let capacity=0,keys=new Float64Array(0),qkeys=new Int32Array(0),out=[],indices=new Uint32Array(0),tmp=new Uint32Array(0),hi=new Uint32Array(0),lo=new Uint32Array(0),bins=new Uint32Array(4096),suffix=new Float64Array(0);
+    const scalar=backend(options.scalar),simd=backend(options.simd),dv=new DataView(new ArrayBuffer(8));
+    function reserve(n){if(n>capacity){capacity=n;keys=new Float64Array(n);qkeys=new Int32Array(n);out=new Array(n);indices=new Uint32Array(n);tmp=new Uint32Array(n);hi=new Uint32Array(n);lo=new Uint32Array(n);suffix=new Float64Array(n);}}
+    function finish(a,n,stats){let writes=0;for(let i=0;i<n;i++){const v=out[i];if(a[i]!==v){a[i]=v;writes++;}}stats.writes=writes;return a;}
+    function jsDense(a,n,min,span,stats){
+      if(span>bins.length)bins=new Uint32Array(span);else bins.fill(0,0,span);
+      for(let i=0;i<n;i++)bins[qkeys[i]-min]++;
+      let pos=0;for(let j=0;j<span;j++){const c=bins[j];bins[j]=pos;pos+=c;}
+      for(let i=0;i<n;i++)out[bins[qkeys[i]-min]++]=a[i];
+      stats.path='packed-js-counting';stats.passes=2;return finish(a,n,stats);
+    }
+    function small(a,n,stats){
+      const ix=Array.from({length:n},(_,i)=>i);
+      ix.sort((i,j)=>keys[i]-keys[j]||i-j);
+      for(let i=0;i<n;i++)out[i]=a[ix[i]];
+      stats.path='packed-js-small';stats.passes=1;return finish(a,n,stats);
+    }
+    function jsFloats(a,n,stats){
+      let diffH=0,diffL=0,firstH=0,firstL=0;
+      for(let i=0;i<n;i++){
+        dv.setFloat64(0,keys[i],false);
+        let h=dv.getUint32(0,false),l=dv.getUint32(4,false);
+        if(h&0x80000000){h=(~h)>>>0;l=(~l)>>>0;}else h=(h^0x80000000)>>>0;
+        hi[i]=h;lo[i]=l;indices[i]=i;
+        if(i){diffH|=h^firstH;diffL|=l^firstL;}else{firstH=h;firstL=l;}
+      }
+      let input=indices,output=tmp,passes=0;
+      for(let pass=0;pass<8;pass++){
+        const change=pass<4?diffL:diffH;
+        const shift=(pass%4)*8;
+        if(((change>>>shift)&255)===0)continue;
+        bins.fill(0,0,256);
+        const word=pass<4?lo:hi;
+        for(let i=0;i<n;i++)bins[(word[input[i]]>>>shift)&255]++;
+        let offset=0;for(let b=0;b<256;b++){const c=bins[b];bins[b]=offset;offset+=c;}
+        for(let i=0;i<n;i++){const x=input[i];output[bins[(word[x]>>>shift)&255]++]=x;}
+        [input,output]=[output,input];passes++;
+      }
+      for(let i=0;i<n;i++)out[i]=a[input[i]];
+      stats.path='packed-js-radix';stats.passes=passes;return finish(a,n,stats);
+    }
+    function localRay(a,n,stats){
+      let min=Infinity;
+      for(let i=n-1;i>=0;i--){if(keys[i]<min)min=keys[i];suffix[i]=min;}
+      let mx=keys[0],start=-1,regions=[],area=0,maxRegion=0;
+      for(let i=0;i<n-1;i++){
+        if(keys[i]>mx)mx=keys[i];
+        if(mx>suffix[i+1]){if(start<0)start=i;}
+        else if(start>=0){const end=i+1;regions.push([start,end]);area+=end-start;maxRegion=Math.max(maxRegion,end-start);start=-1;}
+      }
+      if(start>=0){regions.push([start,n]);area+=n-start;maxRegion=Math.max(maxRegion,n-start);}
+      if(!regions.length || area>n/4 || area>regions.length*32 || maxRegion>32)return false;
+      let writes=0;
+      for(const [begin,end] of regions)for(let i=begin+1;i<end;i++){
+        const weight=keys[i],record=a[i];let j=i;
+        while(j>begin&&keys[j-1]>weight){a[j]=a[j-1];keys[j]=keys[j-1];j--;writes++;}
+        if(j!==i){a[j]=record;keys[j]=weight;writes++;}
+      }
+      stats.path='ray-cut-sparse';stats.writes=writes;stats.raySegments=regions.length;stats.rayArea=area;stats.passes=1;
+      return true;
+    }
+    function wasmSort(a,n,compact,min,span,stats,wasm){
+      if(!wasm||!wasm.memory)return false;
+      const base=wasm.base,keySize=compact?4:8;
+      // 16-byte align all sections; never reuse views across memory.grow().
+      let p=base,align=()=>{p=(p+15)&~15;return p;};
+      const keyP=align();p+=n*keySize;
+      const ixP=align();p+=n*4;
+      const tmpP=align();p+=n*4;
+      const encodedP=align();p+=n*8;
+      const histP=align();p+=Math.max(compact?span:256,256)*4;
+      if(p>wasm.memory.buffer.byteLength){
+        const pages=Math.ceil((p-wasm.memory.buffer.byteLength)/65536);
+        try{wasm.memory.grow(pages)}catch(e){stats.wasmMemoryError=String(e);return false;}
+      }
+      const buffer=wasm.memory.buffer;
+      if(compact)new Int32Array(buffer,keyP,n).set(qkeys.subarray(0,n));
+      else new Float64Array(buffer,keyP,n).set(keys.subarray(0,n));
+      const result=compact?wasm.exports.sort_i32(keyP,n,min,span,ixP,histP):wasm.exports.sort_f64(keyP,n,ixP,tmpP,encodedP,histP);
+      if(result<0)throw new Error('Wasm kernel rejected input: '+result);
+      const sorted=new Uint32Array(buffer,ixP,n);
+      for(let i=0;i<n;i++)out[i]=a[sorted[i]];
+      stats.path=compact?'wasm-compact-count':'wasm-exact-f64-radix';stats.passes=compact?2:result;stats.wasm=true;
+      return finish(a,n,stats);
+    }
+    const api={
+      status(){return {scalar:!!scalar?.memory,simd:!!simd?.memory,scalarError:scalar?.unavailable||null,simdError:simd?.unavailable||null};},
+      sort(a,stats={},mode='auto'){
+        if(!Array.isArray(a))throw new TypeError('Expected an array of records');
+        const n=a.length;stats.n=n;stats.writes=0;stats.passes=0;stats.path='identity';stats.wasm=false;
+        if(!n)return a;
+        reserve(n);
+        let ordered=true,falls=0,prev=-Infinity,quantized=true,min=2147483647,max=-2147483648;
+        for(let i=0;i<n;i++){
+          const w=balance(a[i]);keys[i]=w;
+          if(w<prev){ordered=false;falls++;}prev=w;
+          const q=w*2;
+          if(!Number.isInteger(q)||q<(-2147483648)||q>2147483647)quantized=false;
+          else qkeys[i]=q;
+          if(q<min)min=q;if(q>max)max=q;
+        }
+        stats.metricReads=n;stats.adjacentViolations=falls;
+        if(ordered){stats.path='ordered-zero-write';return a;}
+        const span=max-min+1,compact=quantized&&Number.isSafeInteger(span)&&span>=1&&span<=Math.min(1048576,Math.max(4096,n*8));
+        stats.compact=compact;
+        // For sparse noise, exact ray boundaries allow repairs without moving bulk records.
+        if(mode==='auto'&&n>=256&&falls<=Math.max(3,n/100|0)&&localRay(a,n,stats))return a;
+        if(mode==='wasm-simd'||mode==='wasm-scalar'){
+          const b=mode==='wasm-simd'?simd:scalar;
+          if(wasmSort(a,n,compact,min,span,stats,b)){stats.backend=mode;return a;}
+          stats.fallback=mode+' unavailable';
+        }
+        if(mode==='auto'&&options.autoWasm&&(n>=options.autoWasm||(n>=16&&n<=256))){
+          if(wasmSort(a,n,compact,min,span,stats,simd?.memory?simd:scalar)){stats.backend='auto-wasm';return a;}
+        }
+        if(compact){jsDense(a,n,min,span,stats);stats.backend='js';return a;}
+        if(n<=256){small(a,n,stats);stats.backend='js';return a;}
+        jsFloats(a,n,stats);stats.backend='js';return a;
+      }
+    };
+    return api;
+  }
+  return {createApexX,balance};
+});
+
+const APEX_X_WASM_SCALAR = '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';
+const APEX_X_WASM_SIMD = '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';
+</script>
+  <script>
+  (() => {
+    'use strict';
+
+    const COUNT = 120;
+    const SEED = 0xC0FFEE;
+    const COLOR = { cyan:'#00d2ff', violet:'#7928ca', pink:'#ff0080', compare:'#ffffff', write:'#ff385c', done:'#00f59b' };
+    const ALGORITHMS = [
+      { id:'APEXX', title:'APEX X / Packed SIMD & Adaptive', short:'Packed field + stable index kernel', profile:'apexx', execute:a=>apexXAnimated(a) },
+      { id:'APEX', title:'APEX / Adaptive Production Kernel', short:'Staged, verified high-speed projection', profile:'apex', execute:a=>apexAnimated(a) },
+      { id:'AUTO', title:'Ray-Burst / Adaptive Projection', short:'Adaptive quantum or spectral rays', profile:'auto', execute:a=>rayBurstSort(a,{profile:'auto'}) },
+      { id:'LOCAL', title:'Ray-Burst / Exact Ray Isolation', short:'Multi-cut certificate / localized blasts', profile:'local', execute:a=>rayBurstSort(a,{profile:'local'}) },
+      { id:'SPECTRUM', title:'Ray-Burst / Compressed Spectrum', short:'Path-compressed floating-point rays', profile:'spectrum', execute:a=>rayBurstSort(a,{profile:'spectrum'}) }
+    ];
+    const $ = id => document.getElementById(id);
+    const els = {
+      canvas:$('viz'), title:$('sortTitle'), activity:$('activity'), phase:$('phase'),
+      compares:$('compares'), probes:$('probes'), writes:$('writes'), ops:$('ops'),
+      run:$('run'), reset:$('reset'), bench:$('bench'), dataset:$('dataset'), speed:$('speed'), speedOut:$('speedOut'),
+      sound:$('sound'), contenders:$('contenders'), board:$('leaderboard'),
+      boardCaption:$('boardCaption'), status:$('statusLine'), overlay:$('overlay'),
+      overlayText:$('overlayText'), hint:$('chartHint')
+    };
+    const context = els.canvas.getContext('2d', { alpha:false });
+    if (!context) { els.status.textContent = 'Canvas 2D is unavailable in this browser.'; els.run.disabled = true; return; }
+    const num = n => Math.round(n).toLocaleString('en-US');
+    const clamp = (x,min,max) => Math.min(max,Math.max(min,x));
+
+    // Pre-cache immutable record weights for canvas and audio. Rendering never
+    // recomputes subToken reductions thousands of times per second.
+    const weightCache=new WeakMap();
+    function weight(record) {
+      const cached=weightCache.get(record);
+      if(cached!==undefined)return cached;
+      let sum=0;
+      for(let i=0;i<record.subTokens.length;i++)sum+=record.subTokens[i];
+      const value=record.rawWeight+record.entropySeed.length*1.5+(sum%7);
+      weightCache.set(record,value);
+      return value;
+    }
+    function order(a,b) {
+      const x = weight(a)-weight(b);
+      return x || a.id-b.id;
+    }
+    function randLCG(seed) {
+      let s = seed >>> 0;
+      return () => ((s = (Math.imul(s,1664525)+1013904223) >>> 0) / 4294967296);
+    }
+    function seededRecords() {
+      const random=randLCG(SEED);
+      const chars='abcdefghijklmnopqrstuvwxyz0123456789';
+      const array=[];
+      for (let i=0;i<COUNT;i++) {
+        const length=4+Math.floor(random()*10);
+        let entropySeed='';
+        for (let j=0;j<length;j++) entropySeed += chars[Math.floor(random()*chars.length)];
+        const subTokens=Array.from({length:2+Math.floor(random()*4)},()=>Math.floor(random()*23));
+        array.push({id:i,rawWeight:8+Math.floor(random()*76),entropySeed,subTokens});
+      }
+      // The ordinal is assigned AFTER the shuffle so ties preserve displayed initial order.
+      for (let i=array.length-1;i>0;i--) {
+        const j=Math.floor(random()*(i+1));
+        [array[i],array[j]]=[array[j],array[i]];
+      }
+      return array.map((r,id)=>({id,rawWeight:r.rawWeight,entropySeed:r.entropySeed,subTokens:r.subTokens}));
+    }
+    function copyRecords(records) {
+      return records.map(r=>({id:r.id,rawWeight:r.rawWeight,entropySeed:r.entropySeed,subTokens:r.subTokens.slice()}));
+    }
+
+    function buildInput(pattern='random') {
+      const baseline=seededRecords();
+      if(pattern==='random')return baseline;
+      if(pattern==='ties') {
+        return baseline.map((r,id)=>({
+          ...r,id,rawWeight:20+(id%6)*1.5-r.entropySeed.length*1.5-(r.subTokens.reduce((a,b)=>a+b,0)%7)
+        }));
+      }
+      if(pattern==='floats') {
+        const rng=randLCG(SEED^0xF10A7);
+        return baseline.map((r,id)=>({...r,id,rawWeight:r.rawWeight+(rng()-.5)*.7}));
+      }
+      const ordered=copyRecords(baseline);
+      runToEnd(rayBurstSort(ordered,{profile:'global'})); // original engine, not native .sort()
+      let arranged=ordered;
+      if(pattern==='reverse')arranged=ordered.reverse();
+      else if(pattern==='near') {
+        for(const [i,j] of [[12,14],[53,54],[99,103]]) [arranged[i],arranged[j]]=[arranged[j],arranged[i]];
+      } else if(pattern==='bursts') {
+        for(const [start,end] of [[16,23],[54,63],[94,101]]) {
+          for(let k=0;k<Math.floor((end-start)/2);k++) {
+            [arranged[start+k],arranged[end-1-k]]=[arranged[end-1-k],arranged[start+k]];
+          }
+        }
+      }
+      return arranged.map((r,id)=>({...r,id}));
+    }
+
+    /* Embedded dependency-free Ray-Burst core; also published as rayburst_core.js. */
+/*
+ * CHROMA / Ray-Burst Adaptive Field Projector — experimental engineering synthesis.
+ * This is NOT a claim of a fundamentally new sorting family: its numeric field
+ * projection overlaps known distribution / trie / radix techniques, while
+ * cycle manifestation is an established permutation technique. The distinctive
+ * value here is an audited, adaptive, stable record sorter with an exact ray
+ * isolation sensor, a minimal main-array write count, and truthful probe events.
+ *
+ * Generator events:
+ *   compare = actual comparison of two original record keys
+ *   probe   = metric evaluation or coordinate/bucket index observation
+ *   write   = one main-array slot mutation
+ * An optional 'ray' event carries visualization metadata, costs zero ops.
+ *
+ * Stable order: (exact computed balance W, source ordinal). No reliance on id.
+ * Supported values: finite JS Numbers, subTokens numeric, entropySeed string.
+ */
+
+function metric(record) {
+  if (!record || !Array.isArray(record.subTokens) || typeof record.entropySeed !== 'string' || !Number.isFinite(record.rawWeight)) {
+    throw new TypeError('Invalid record. Expected finite rawWeight, string entropySeed, numeric subTokens[]');
+  }
+  let sum=0;
+  for (let i=0;i<record.subTokens.length;i++) {
+    const t=record.subTokens[i];
+    if (!Number.isFinite(t)) throw new TypeError('All subTokens must be finite numbers');
+    sum+=t;
+  }
+  const w=record.rawWeight + record.entropySeed.length*1.5 + (sum%7);
+  if (!Number.isFinite(w)) throw new TypeError('Balance W must be finite');
+  return w===0?0:w;
+}
+
+function cmpVal(a,b) {return a<b?-1:a>b?1:0;}
+
+// All relevant cuts are certified with prefix maxima and suffix minima.
+// If the prefix max <= suffix min, NO cross-boundary inversion is possible.
+// Hot cuts are maximal contiguous segments of positive violations.
+function* rayIsolate(values,start,end) {
+  const len=end-start;
+  if(len<2) return {segments:[],hot:0,cuts:0};
+  const leftMax=new Int32Array(len),rightMin=new Int32Array(len);
+  leftMax[0]=0;rightMin[len-1]=len-1;
+  for(let i=1;i<len;i++) {
+    const m=leftMax[i-1];
+    yield {type:'compare',indices:[start+m,start+i],kind:'left-ray'};
+    leftMax[i]=(values[start+m]>=values[start+i])?m:i;
+  }
+  for(let i=len-2;i>=0;i--) {
+    const m=rightMin[i+1];
+    yield {type:'compare',indices:[start+i,start+m],kind:'right-ray'};
+    rightMin[i]=(values[start+i]<=values[start+m])?i:m;
+  }
+  const segments=[];
+  let begin=-1,hot=0;
+  for(let i=0;i<len-1;i++) {
+    const l=leftMax[i],r=rightMin[i+1];
+    yield {type:'compare',indices:[start+l,start+r],kind:'cut-ray'};
+    const violation=values[start+l]>values[start+r];
+    if(violation) {if(begin<0) begin=i;hot++;}
+    else if(begin>=0) {segments.push([start+begin,start+i+1]);begin=-1;}
+  }
+  if(begin>=0) segments.push([start+begin,end]);
+  return {segments,hot,cuts:len-1};
+}
+
+// Encode finite Float64 so unsigned lexicographic bit order matches numeric
+// order. This is exact even for negative values and microscopic differences.
+function orderedWord(value,view) {
+  view.setFloat64(0,value===0?0:value,false);
+  let hi=view.getUint32(0,false), lo=view.getUint32(4,false);
+  if((hi&0x80000000)!==0) {hi=(~hi)>>>0;lo=(~lo)>>>0;}
+  else hi=(hi^0x80000000)>>>0;
+  return [hi,lo];
+}
+
+function* projectSegment(values,from,to,profile,emitRay) {
+  const n=to-from;
+  const out=[];
+  if(n<=1) {if(n)out.push(from);return {order:out,method:'identity',probes:0,beams:0};}
+
+  // Half-unit lattice is valid only if every key is EXACTLY 0.5 * integer,
+  // fits safe integer arithmetic, and the coordinate span is small enough.
+  let min2=Infinity,max2=-Infinity,quantum=(profile!=='spectrum');
+  if(quantum) {
+    for(let i=from;i<to;i++) {
+      const doubled=values[i]*2;
+      if(!Number.isSafeInteger(doubled)) {quantum=false;break;}
+      if(doubled<min2) min2=doubled;
+      if(doubled>max2) max2=doubled;
+    }
+    if(quantum && max2-min2+1>Math.max(4096,8*n)) quantum=false;
+  }
+  if(quantum) {
+    const span=max2-min2+1;
+    const heads=new Int32Array(span).fill(-1),tails=new Int32Array(span).fill(-1);
+    const next=new Int32Array(n).fill(-1), occupancy=new Uint32Array(Math.ceil(span/32));
+    for(let i=from;i<to;i++) {
+      const offset=values[i]*2-min2, local=i-from;
+      occupancy[offset>>>5]|=1<<(offset&31);
+      yield {type:'probe',indices:[i],kind:'quantum-ray'};
+      if(heads[offset]<0)heads[offset]=local;
+      else next[tails[offset]]=local;
+      tails[offset]=local;
+    }
+    let activated=0;
+    for(let w=0;w<occupancy.length;w++) {
+      let mask=occupancy[w];
+      while(mask!==0) {
+        const bit=31-Math.clz32(mask&-mask),cell=w*32+bit;
+        activated++;
+        for(let i=heads[cell];i!==-1;i=next[i]) out.push(from+i);
+        mask=(mask&(mask-1))>>>0;
+      }
+    }
+    return {order:out,method:'quantum-field',probes:n,beams:activated,fieldWords:occupancy.length};
+  }
+
+  // Exact path-compressed 16-way ray field. Branches materialize ONLY where
+  // two numerical values collide in their current directional projection.
+  // Deep common exponent/mantissa prefixes are skipped via CLZ; duplicate
+  // floats land in source-order queues. This is trie/radix-adjacent prior art.
+  const view=new DataView(new ArrayBuffer(8)),words=new Array(n);
+  for(let j=0;j<n;j++)words[j]=orderedWord(values[from+j],view);
+  const nibble=(index,level)=>{
+    const word=words[index-from];
+    return level<8?(word[0]>>>(28-4*level))&15:(word[1]>>>(28-4*(level-8)))&15;
+  };
+  const divergence=(a,b)=>{
+    const x=words[a-from],y=words[b-from];
+    const hi=(x[0]^y[0])>>>0;
+    if(hi) return Math.floor(Math.clz32(hi)/4);
+    const lo=(x[1]^y[1])>>>0;
+    return lo?8+Math.floor(Math.clz32(lo)/4):-1;
+  };
+  const leaf=i=>({representative:i,level:-1,children:null,indices:[i]});
+  let root=leaf(from),probes=0,beams=1;
+  for(let i=from+1;i<to;i++) {
+    let node=root,parent=null,parentSlot=-1;
+    while(true) {
+      probes++;
+      yield {type:'probe',indices:[i],kind:'spectrum-ray'};
+      const diff=divergence(node.representative,i);
+      if(node.level===-1 && diff===-1) {node.indices.push(i);break;}
+      if(node.level===-1 || (diff>=0 && diff<node.level)) {
+        if(diff<0)throw new Error('Unexpected equal branch representatives');
+        const split={representative:node.representative,level:diff,children:new Array(16),indices:null};
+        split.children[nibble(node.representative,diff)]=node;
+        split.children[nibble(i,diff)]=leaf(i);
+        beams+=2;
+        if(parent)parent.children[parentSlot]=split;else root=split;
+        break;
+      }
+      const slot=nibble(i,node.level);
+      if(!node.children[slot]) {
+        node.children[slot]=leaf(i);beams++;break;
+      }
+      parent=node;parentSlot=slot;node=node.children[slot];
+    }
+  }
+  const stack=[root];
+  while(stack.length) {
+    const node=stack.pop();
+    if(node.indices) for(const idx of node.indices)out.push(idx);
+    if(node.children) for(let d=15;d>=0;d--)if(node.children[d])stack.push(node.children[d]);
+  }
+  return {order:out,method:'compressed-ray-field',probes,beams};
+}
+
+function* manifestByCycle(array,from,to,order) {
+  const len=to-from;
+  if(order.length!==len)throw new Error('Projection did not produce a full segment');
+  // next[target source] = target index. Maps original positions to destinations.
+  const dest=new Int32Array(len),checked=new Uint8Array(len);
+  for(let j=0;j<len;j++) {
+    const source=order[j]-from;
+    if(source<0||source>=len||checked[source])throw new Error('Invalid or duplicate ray output');
+    checked[source]=1;dest[source]=j;
+  }
+  checked.fill(0);
+  let writes=0,cycles=0;
+  for(let i=0;i<len;i++) {
+    if(checked[i]||dest[i]===i) {checked[i]=1;continue;}
+    cycles++;
+    let cursor=i,hold=array[from+i];
+    do {
+      checked[cursor]=1;
+      const next=dest[cursor];
+      if(checked[next]&&next!==i)throw new Error('Invalid destination cycle');
+      const tmp=array[from+next];
+      array[from+next]=hold;
+      yield {type:'write',indices:[from+next],kind:'cycle-manifest'};
+      writes++;
+      hold=tmp;
+      cursor=next;
+    }while(cursor!==i);
+  }
+  return {writes,cycles};
+}
+
+// One main generator for the UI; optional profiles are three ways to
+// schedule the *same* mathematical engine, not three claimed inventions.
+function* rayBurstSort(array,{profile='auto',rayThreshold=0.16}={}) {
+  if(!Array.isArray(array))throw new TypeError('Expected record array');
+  if(!['auto','local','global','spectrum'].includes(profile))throw new Error('Unsupported profile');
+  const n=array.length,values=new Float64Array(n);
+  for(let i=0;i<n;i++) {
+    values[i]=metric(array[i]);
+    yield {type:'probe',indices:[i],kind:'metric-read'};
+  }
+  // A quantum key-space can be projected directly without spending n-1
+  // comparisons on a presortedness test. This removes redundant work on
+  // the common generated-record workload (integer rawWeight and tokens).
+  let globallyQuantized=true,minQ=Infinity,maxQ=-Infinity;
+  for(let i=0;i<n;i++) {
+    const q=values[i]*2;
+    if(!Number.isSafeInteger(q)) {globallyQuantized=false;break;}
+    if(q<minQ)minQ=q;
+    if(q>maxQ)maxQ=q;
+  }
+  globallyQuantized=globallyQuantized && maxQ-minQ+1<=Math.max(4096,8*n);
+  const directQuantum=globallyQuantized && (profile==='auto'||profile==='global');
+  let inversions=0,peak=0;
+  if(!directQuantum) {
+    for(let i=1;i<n;i++) {
+      yield {type:'compare',indices:[i-1,i],kind:'noise-scan'};
+      const gap=values[i-1]-values[i];
+      if(gap>0) {inversions++;if(gap>peak) peak=gap;}
+    }
+  }
+  const info={profile,n,adjacentInversions:directQuantum?null:inversions,peak:directQuantum?null:peak,isolated:false,segments:0,rayActiveCuts:0,methods:[],probes:0,writes:0,cycles:0,fastField:directQuantum};
+  if(!directQuantum && inversions===0)return {...info,alreadySorted:true};
+  if(n<=1)return {...info,alreadySorted:true};
+  let segments=[[0,n]];
+  // Exact ray isolation is worth its additional 3(n-1) comparisons only
+  // when it is explicitly requested, or for sparse continuous-value noise
+  // on large inputs where saving many trie probes can pay for the scan.
+  if(profile==='local'||(profile==='auto'&&!globallyQuantized&&n>=512&&inversions<=Math.max(3,Math.floor(Math.sqrt(n)/3)))) {
+    const scan=yield* rayIsolate(values,0,n);
+    segments=scan.segments;
+    info.isolated=true;info.rayActiveCuts=scan.hot;
+    if(!segments.length)throw new Error('Ray field missed a witnessed inversion');
+  }
+  info.segments=segments.length;
+  for(const [from,to] of segments) {
+    const projected=yield* projectSegment(values,from,to,profile);
+    info.methods.push(projected.method);
+    info.probes+=projected.probes;
+    const manifest=yield* manifestByCycle(array,from,to,projected.order);
+    info.writes+=manifest.writes;info.cycles+=manifest.cycles;
+  }
+  return info;
+}
+
+function runToEnd(generator) {
+  const counts={compares:0,probes:0,writes:0,total:0,events:0};
+  let r;
+  while(!(r=generator.next()).done) {
+    const e=r.value;
+    if(e.type==='compare')counts.compares++;
+    else if(e.type==='probe')counts.probes++;
+    else if(e.type==='write')counts.writes+=e.indices.length;
+    else if(e.type!=='ray')throw new Error('Unknown event type '+e.type);
+    counts.events++;
+  }
+  counts.total=counts.compares+counts.probes+counts.writes;
+  return {counts,diagnostics:r.value};
+}
+
+
+
+
+
+    // APEX production kernel.  THIS is the measured hot path; no generator
+    // allocations inside its sorting loops.  Its components overlap existing
+    // numeric distribution, radix, merging and insertion methods.
+'use strict';
+/** Adaptive record projector: fast path based on certified global order,
+ * exact ray-cut isolation of sparse disorder, compact numeric occupancy,
+ * and exact IEEE ordered-digit processing for general numeric metrics.
+ * Component techniques have prior art.  Not a claim of universal fastest.
+ */
+'use strict';
+/** Adaptive record projector: fast path based on certified global order,
+ * exact ray-cut isolation of sparse disorder, compact numeric occupancy,
+ * and exact IEEE ordered-digit processing for general numeric metrics.
+ * Component techniques have prior art.  Not a claim of universal fastest.
+ */
+function createApexEngine(){
+ let capacity=0,keys=new Float64Array(0),scratch=[],bins=new Int32Array(512),suffix=new Float64Array(0);
+ let src=new Int32Array(0),dst=new Int32Array(0),view=new DataView(new ArrayBuffer(8));
+ function reserve(n){if(n>capacity){capacity=n;keys=new Float64Array(n);scratch=new Array(n);suffix=new Float64Array(n);src=new Int32Array(n);dst=new Int32Array(n);}}
+ function localRay(a,n,stats){
+  let min=Infinity;for(let i=n-1;i>=0;i--){if(keys[i]<min)min=keys[i];suffix[i]=min;}
+  let maximum=keys[0],from=-1,hot=0,segments=0,area=0,maxInterval=0;
+  const intervals=[];
+  for(let i=0;i<n-1;i++){
+   if(keys[i]>maximum)maximum=keys[i];
+   if(maximum>suffix[i+1]){hot++;if(from<0)from=i;}
+   else if(from>=0){const end=i+1;intervals.push(from,end);area+=end-from;maxInterval=Math.max(maxInterval,end-from);segments++;from=-1;}
+  }
+  if(from>=0){intervals.push(from,n);area+=n-from;maxInterval=Math.max(maxInterval,n-from);segments++;}
+  if(!intervals.length)throw Error('Ray violation certificate missing despite local inversion');
+  // Avoid spending work on large domains; detector is exact even if we decline to use it.
+  if(area>n/3 || area>segments*64 || maxInterval>64){if(stats){stats.rayCuts=hot;stats.raySegments=segments;stats.rayFallback=true;}return false;}
+  let writes=0;
+  for(let g=0;g<intervals.length;g+=2){
+   const lo=intervals[g],hi=intervals[g+1];
+   for(let i=lo+1;i<hi;i++){
+     const key=keys[i],record=a[i];let j=i;
+     while(j>lo && keys[j-1]>key){a[j]=a[j-1];keys[j]=keys[j-1];writes++;j--;}
+     if(j!==i){a[j]=record;keys[j]=key;writes++;}
+   }
+  }
+  if(stats){stats.path='ray-cut-local';stats.writes=writes;stats.rayCuts=hot;stats.raySegments=segments;stats.rayArea=area;stats.passes=1;}
+  return true;
+ }
+ function dense(a,n,min2,max2,stats){
+  const span=max2-min2+1;
+  if(span>bins.length)bins=new Int32Array(span);else bins.fill(0,0,span);
+  for(let i=0;i<n;i++)bins[keys[i]*2-min2]++;
+  let total=0;for(let j=0;j<span;j++){let count=bins[j];bins[j]=total;total+=count;}
+  for(let i=0;i<n;i++)scratch[bins[keys[i]*2-min2]++]=a[i];
+  for(let i=0;i<n;i++)a[i]=scratch[i];
+  if(stats){stats.path='quantized-occupancy';stats.passes=2;stats.writes=n;stats.span=span;}
+ }
+ function mergeSmall(a,n,stats){
+  let input=src,output=dst;
+  for(let i=0;i<n;i++)input[i]=i;
+  let passes=0;
+  for(let step=1;step<n;step*=2){
+    for(let left=0;left<n;left+=step*2){
+      const middle=Math.min(n,left+step),end=Math.min(n,left+step*2);
+      let x=left,y=middle,k=left;
+      while(x<middle && y<end){let ix=input[x],iy=input[y];output[k++]=keys[ix]<=keys[iy]?input[x++]:input[y++];}
+      while(x<middle)output[k++]=input[x++];
+      while(y<end)output[k++]=input[y++];
+    }
+    [input,output]=[output,input];passes++;
+  }
+  for(let i=0;i<n;i++)scratch[i]=a[input[i]];
+  for(let i=0;i<n;i++)a[i]=scratch[i];
+  if(stats){stats.path='stable-small-merge';stats.writes=n;stats.passes=passes;}
+ }
+ function floating(a,n,stats){
+  // Exact Float64 ordering, including denormals, negative values, +/-0 equality.
+  // JS stable ties: source order survives each distribution pass.
+  const high=new Uint32Array(n),low=new Uint32Array(n);
+  let dh=0,dl=0,firstHigh=0,firstLow=0;
+  for(let i=0;i<n;i++){
+    view.setFloat64(0,keys[i],false);
+    let h=view.getUint32(0,false),l=view.getUint32(4,false);
+    if(h&0x80000000){h=(~h)>>>0;l=(~l)>>>0;}else h=(h^0x80000000)>>>0;
+    high[i]=h;low[i]=l;
+    if(i){dh|=(h^firstHigh);dl|=(l^firstLow);}else{firstHigh=h;firstLow=l;}
+  }
+  let input=src,output=dst;
+  for(let i=0;i<n;i++)input[i]=i;
+  const bits=11,mask=2047,count=new Uint32Array(2048);
+  let passes=0;
+  for(let w=0;w<2;w++){
+    const words=w?high:low,changed=w?dh:dl;
+    for(let shift=0;shift<32;shift+=bits){
+      if((changed&((mask<<shift)>>>0))===0)continue;
+      count.fill(0);
+      for(let i=0;i<n;i++)count[(words[input[i]]>>>shift)&mask]++;
+      let base=0;for(let b=0;b<2048;b++){const v=count[b];count[b]=base;base+=v;}
+      for(let i=0;i<n;i++){const idx=input[i],d=(words[idx]>>>shift)&mask;output[count[d]++]=idx;}
+      [input,output]=[output,input];passes++;
+    }
+  }
+  for(let i=0;i<n;i++)scratch[i]=a[input[i]];
+  for(let i=0;i<n;i++)a[i]=scratch[i];
+  if(stats){stats.path='exact-float-field';stats.writes=n;stats.passes=passes;}
+ }
+ return function sort(a,stats=null,options=null){
+  if(!Array.isArray(a))throw TypeError('Expected record array');
+  const n=a.length;
+  if(stats){stats.n=n;stats.path='identity';stats.writes=0;stats.passes=0;stats.rayCuts=0;stats.rayArea=0;}
+  if(n<2)return a;
+  reserve(n);
+  let min2=Infinity,max2=-Infinity,prev=-Infinity,ascending=true,quantized=true,falls=0;
+  for(let i=0;i<n;i++){
+   const r=a[i];if(!r || !Number.isFinite(r.rawWeight) || typeof r.entropySeed!=='string' || !Array.isArray(r.subTokens))throw TypeError('Invalid record at '+i);
+   const t=r.subTokens;let sum=0;
+   if(t.length===3){const x=t[0],y=t[1],z=t[2];if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))throw TypeError('Invalid subToken at '+i);sum=x+y+z;}
+   else for(let j=0;j<t.length;j++){if(!Number.isFinite(t[j]))throw TypeError('Invalid subToken at '+i);sum+=t[j];}
+   let k=r.rawWeight+r.entropySeed.length*1.5+(sum%7);
+   if(!Number.isFinite(k))throw TypeError('Nonfinite balance metric at '+i);
+   if(k===0)k=0;
+   keys[i]=k;
+   if(k<prev){ascending=false;falls++;}prev=k;
+   const q=k*2;
+   if(quantized && !Number.isSafeInteger(q))quantized=false;
+   if(q<min2)min2=q;if(q>max2)max2=q;
+  }
+  if(ascending){if(stats)stats.path='certified-ordered';return a;}
+  if(stats)stats.adjacentViolations=falls;
+  if(n>=256 && falls<=Math.max(3,Math.floor(n/80)) && (!options || options.ray!==false) && localRay(a,n,stats))return a;
+  const span=max2-min2+1;
+  if(quantized && Number.isSafeInteger(span)&&span<=Math.max(4096,n*8)&&span<=1048576){dense(a,n,min2,max2,stats);return a;}
+  if(n<=768){mergeSmall(a,n,stats);return a;}
+  floating(a,n,stats);return a;
+ };
+}
+const apexEngine=createApexEngine();
+
+    // APEX X: real offline WebAssembly binaries are embedded directly in HTML.
+    // Auto selects SIMD for larger non-quantized inputs. Both scalar and JS fallback work.
+    const apexXEngine=ChromaApexX.createApexX({
+      simd:APEX_X_WASM_SIMD, scalar:APEX_X_WASM_SCALAR, autoWasm:512
+    });
+    function* apexXAnimated(array){
+      const projected=array.slice(),stats={};
+      apexXEngine.sort(projected,stats,'auto');
+      for(let i=0;i<array.length;i++)yield {type:'probe',indices:[i],kind:'packed-metric'};
+      let changed=0;
+      for(let i=0;i<array.length;i++)if(array[i]!==projected[i]){
+        array[i]=projected[i];changed++;
+        yield {type:'write',indices:[i],kind:'packed-index-placement'};
+      }
+      return {methods:[stats.path,stats.backend||'auto'],verifiedStable:true,
+        replayWrites:changed, actualWrites:stats.writes, actualPasses:stats.passes};
+    }
+
+    // Generator is a faithful replay of final visible mutations after the
+    // production kernel runs on a shadow copy.  It is not a CPU benchmark.
+    function* apexAnimated(array){
+      const target=array.slice(),stats={};
+      apexEngine(target,stats);
+      for(let i=0;i<array.length;i++)yield {type:'probe',indices:[i],kind:'apex-key-replay'};
+      let visibleWrites=0;
+      for(let i=0;i<array.length;i++)if(array[i]!==target[i]){
+        array[i]=target[i];visibleWrites++;
+        yield {type:'write',indices:[i],kind:'apex-position-replay'};
+      }
+      return {methods:[stats.path],fastKernel:true,actualKernelWrites:stats.writes,visibleWrites,rayCuts:stats.rayCuts,raySegments:stats.raySegments||0};
+    }
+
+    function inspect(array) {
+      if (array.length!==COUNT) return false;
+      const seen=new Set();
+      for (let i=0;i<array.length;i++) {
+        if (seen.has(array[i].id)) return false;
+        seen.add(array[i].id);
+        if (i>0 && order(array[i-1],array[i])>0) return false;
+      }
+      return seen.size===COUNT;
+    }
+
+    // Reusable Web Audio oscillator/gain voices: no external samples or files.
+    // Every emitted compare/write event calls pulse for each touched record.
+    class MicroSynth {
+      constructor() { this.enabled=true;this.ctx=null;this.master=null;this.voices=[];this.cursor=0;this.low=0;this.high=1; }
+      setRange(a,b) {this.low=a;this.high=b;}
+      async unlock() {
+        if (!this.enabled) return;
+        const AC=window.AudioContext||window.webkitAudioContext;
+        if (!AC) { this.enabled=false; els.sound.textContent='♫ Unavailable'; return; }
+        if (!this.ctx) {
+          this.ctx=new AC();
+          this.master=this.ctx.createGain();
+          this.master.gain.value=.32;
+          this.master.connect(this.ctx.destination);
+          for (let i=0;i<32;i++) {
+            const oscillator=this.ctx.createOscillator();
+            const gain=this.ctx.createGain();
+            oscillator.type='sine';gain.gain.value=0;
+            oscillator.connect(gain);gain.connect(this.master);oscillator.start();
+            this.voices.push({oscillator,gain});
+          }
+        }
+        if (this.ctx.state==='suspended') await this.ctx.resume();
+      }
+      pulse(w,type) {
+        if (!this.enabled || !this.ctx || this.ctx.state!=='running') return;
+        const normalized=clamp((w-this.low)/Math.max(1e-9,this.high-this.low),0,1);
+        const hz=120*Math.pow(1600/120,normalized);
+        const voice=this.voices[(this.cursor++)%this.voices.length];
+        const t=this.ctx.currentTime;
+        const envelope=voice.gain.gain;
+        // Repeated fast events retrigger a voice (voice stealing), preserving
+        // all pitch events without unboundedly allocating audio nodes.
+        envelope.cancelScheduledValues(t);
+        envelope.setValueAtTime(.0001,t);
+        voice.oscillator.frequency.setValueAtTime(hz,t);
+        envelope.linearRampToValueAtTime(type==='compare'?.026:.053,t+.0025);
+        envelope.exponentialRampToValueAtTime(.0001,t+(type==='compare'?.019:.030));
+      }
+      toggle() {
+        this.enabled=!this.enabled;
+        if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.enabled?.32:0,this.ctx.currentTime,.013);
+      }
+    }
+
+    const synth=new MicroSynth();
+    let source=buildInput(els.dataset.value);
+    let working=copyRecords(source);
+    let rangeMin=Math.min(...source.map(weight)),rangeMax=Math.max(...source.map(weight));
+    synth.setRange(rangeMin,rangeMax);
+    let phaseIndex=0, iterator=null, mode='idle', previousMode='running';
+    let score={compares:0,probes:0,writes:0,total:0};
+    let results=[];
+    let computeMs=0, phaseDiagnostics=null;
+    let speed=Number(els.speed.value), budget=0, lastFrame=0;
+    let sweepProgress=0, interlude=0;
+    let serial=0;
+    const touchedSerial=new Int32Array(COUNT),touchedType=new Uint8Array(COUNT);
+    let rayVisual={left:-1,right:-1,serial:-99999};
+    touchedSerial.fill(-99999);
+    let viewportWidth=0,viewportHeight=0;
+    let paintGradient=null;
+
+
+    // Real production comparison: no animation/yield overhead, identical keys,
+    // each candidate receives a shallow *array* clone, and all candidates must
+    // preserve the exact same stable order.  Record payloads remain immutable.
+    const perfSize=$('speedSize'),perfRun=$('speedRun'),perfStatus=$('speedStatus'),perfResults=$('speedResults');
+    function countReference(a){
+      const n=a.length;if(n<2)return a;
+      const keys=new Float64Array(n);let min=Infinity,max=-Infinity;
+      for(let i=0;i<n;i++){const x=metric(a[i])*2;if(!Number.isSafeInteger(x))return null;keys[i]=x;if(x<min)min=x;if(x>max)max=x;}
+      const span=max-min+1;if(span>Math.max(4096,8*n)||span>1000000)return null;
+      const count=new Int32Array(span);for(let i=0;i<n;i++)count[keys[i]-min]++;
+      let pos=0;for(let i=0;i<span;i++){const t=count[i];count[i]=pos;pos+=t;}
+      const out=new Array(n);for(let i=0;i<n;i++)out[count[keys[i]-min]++]=a[i];
+      for(let i=0;i<n;i++)a[i]=out[i];return a;
+    }
+    function mergeReference(a){
+      const n=a.length;if(n<2)return a;
+      let src=new Array(n),dest=new Array(n);
+      for(let i=0;i<n;i++)src[i]={r:a[i],k:metric(a[i])};
+      for(let step=1;step<n;step*=2){
+        for(let start=0;start<n;start+=step*2){
+          const mid=Math.min(n,start+step),end=Math.min(n,start+2*step);let l=start,r=mid,z=start;
+          while(l<mid&&r<end)dest[z++]=src[l].k<=src[r].k?src[l++]:src[r++];
+          while(l<mid)dest[z++]=src[l++];while(r<end)dest[z++]=src[r++];
+        }[src,dest]=[dest,src];
+      }
+      for(let i=0;i<n;i++)a[i]=src[i].r;return a;
+    }
+    function radixReference(a){
+      const n=a.length;if(n<2)return a;
+      const hi=new Uint32Array(n),lo=new Uint32Array(n),dv=new DataView(new ArrayBuffer(8));
+      for(let i=0;i<n;i++){const word=orderedWord(metric(a[i]),dv);hi[i]=word[0];lo[i]=word[1];}
+      let ix=new Int32Array(n),out=new Int32Array(n);
+      for(let i=0;i<n;i++)ix[i]=i;
+      for(let pass=0;pass<8;pass++){
+        const count=new Uint32Array(256),shift=(pass%4)*8,word=pass<4?lo:hi;
+        for(let i=0;i<n;i++)count[(word[ix[i]]>>>shift)&255]++;
+        let offset=0;for(let j=0;j<256;j++){const c=count[j];count[j]=offset;offset+=c;}
+        for(let i=0;i<n;i++){const id=ix[i],digit=(word[id]>>>shift)&255;out[count[digit]++]=id;}
+        [ix,out]=[out,ix];
+      }
+      const temp=new Array(n);for(let i=0;i<n;i++)temp[i]=a[ix[i]];
+      for(let i=0;i<n;i++)a[i]=temp[i];return a;
+    }
+    function cachedNative(a){
+      const n=a.length,entries=new Array(n);
+      for(let i=0;i<n;i++)entries[i]={r:a[i],k:metric(a[i]),i};
+      entries.sort((x,y)=>x.k-y.k||x.i-y.i);
+      for(let i=0;i<n;i++)a[i]=entries[i].r;return a;
+    }
+    function benchmarkInput(n,pattern){
+      if(n===COUNT)return source;
+      const rng=randLCG(SEED^Math.imul(n,21391)),a=new Array(n);
+      for(let i=0;i<n;i++){
+        const len=2+Math.floor(rng()*9),tokens=[Math.floor(rng()*15),Math.floor(rng()*11),Math.floor(rng()*13)];
+        let raw=8+Math.floor(rng()*128);
+        if(pattern==='floats')raw+=rng()-.5;
+        if(pattern==='ties')raw=25+(i%6)-len*1.5-(tokens[0]+tokens[1]+tokens[2])%7;
+        a[i]={id:i,rawWeight:raw,entropySeed:'x'.repeat(len),subTokens:tokens};
+      }
+      if(pattern==='sorted'||pattern==='reverse'||pattern==='near'||pattern==='bursts'){
+        const temp=a.map((r,i)=>({r,key:metric(r),i}));
+        temp.sort((x,y)=>x.key-y.key||x.i-y.i);
+        const sorted=temp.map(x=>x.r);
+        if(pattern==='reverse')return sorted.reverse();
+        if(pattern==='near')for(let j=0;j<Math.max(3,Math.floor(n/800));j++){
+          let i=Math.floor(rng()*(n-6)),k=i+1+Math.floor(rng()*5);
+          [sorted[i],sorted[k]]=[sorted[k],sorted[i]];
+        }
+        if(pattern==='bursts')for(let j=0;j<Math.max(3,Math.floor(n/900));j++){
+          let i=Math.floor(rng()*(n-20));
+          for(let k=0;k<7;k++)[sorted[i+k],sorted[i+13-k]]=[sorted[i+13-k],sorted[i+k]];
+        }
+        return sorted;
+      }
+      return a;
+    }
+    const speedMethods=[
+      {id:'APEXX',name:'APEX X / adaptive',fn:a=>apexXEngine.sort(a,{},'auto'),detail:'Packed keys; automatic numeric specialization'},
+      {id:'SIMD',name:'APEX X / Wasm SIMD',fn:a=>apexXEngine.sort(a,{},'wasm-simd'),detail:'Real SIMD128 module + stable packed index sort'},
+      {id:'SCALAR',name:'APEX X / Wasm scalar',fn:a=>apexXEngine.sort(a,{},'wasm-scalar'),detail:'Identical C kernel without SIMD128'},
+      {id:'APEX',name:'APEX / adaptive exact',fn:a=>apexEngine(a),detail:'Reusable workspace + data profiler'},
+      {id:'COUNT',name:'Reference / stable counting',fn:countReference,detail:'Compact half-step keys only'},
+      {id:'MERGE',name:'Reference / stable merge',fn:mergeReference,detail:'Comparison baseline'},
+      {id:'RADIX',name:'Reference / byte radix',fn:radixReference,detail:'Exact IEEE-754 numerical field'},
+      {id:'NATIVE',name:'V8 / cached native sort',fn:cachedNative,detail:'Built-in stable sort; cached metrics'},
+      {id:'RAY',name:'Ray-Burst / generator',fn:a=>{runToEnd(rayBurstSort(a,{profile:'auto'}));return a;},detail:'Previous reference; generator overhead'}
+    ];
+    async function runSpeedTrials(){
+      if(perfRun.disabled)return;
+      perfRun.disabled=true;
+      const n=Number(perfSize.value),pattern=els.dataset.value;
+      perfResults.replaceChildren();
+      try{
+        const reference=benchmarkInput(n,pattern);
+        const wanted=reference.map((r,i)=>({r,i,key:metric(r)})).sort((x,y)=>x.key-y.key||x.i-y.i).map(x=>x.r);
+        const trials=[];
+        const repeats=n<=120?1000:n<=1000?200:n<=10000?50:8;
+        for(const method of speedMethods){
+          perfStatus.textContent=`Verifying ${method.name} · ${num(n)} records · ${pattern}`;
+          await new Promise(resolve=>setTimeout(resolve,0));
+          const valid=reference.slice(),result=method.fn(valid);
+          if(result===null){trials.push({...method,skip:true});continue;}
+          for(let i=0;i<n;i++)if(valid[i]!==wanted[i])throw new Error(`${method.name}: stable verification failed at ${i}`);
+          for(let w=0;w<5;w++)method.fn(reference.slice());
+          trials.push({...method,samples:[],skip:false});
+        }
+        const active=trials.filter(x=>!x.skip);
+        for(let round=0;round<5;round++){
+          // Alternate traversal direction across batches so that the same
+          // contender is not always measured immediately after the same rival.
+          const rotated=active.map((_,i)=>active[(i+round)%active.length]);
+          if(round&1)rotated.reverse();
+          for(const method of rotated){
+            perfStatus.textContent=`Timing pass ${round+1}/5 · ${method.name} · ${num(n)} ${pattern} records`;
+            const batch=Array.from({length:repeats},()=>reference.slice());
+            const t0=performance.now();
+            let checksum=0;
+            for(let j=0;j<repeats;j++){
+              method.fn(batch[j]);checksum+=batch[j][(j*31)%n].id;
+            }
+            const elapsed=(performance.now()-t0)/repeats;
+            if(!Number.isFinite(checksum))throw new Error('Invalid timing checksum');
+            method.samples.push(elapsed);
+            // Outside measured region, validate every output.
+            for(const arr of batch)for(let i=0;i<n;i++)if(arr[i]!==wanted[i])throw new Error(`${method.name}: repeated stable verification failed`);
+            await new Promise(resolve=>setTimeout(resolve,0));
+          }
+        }
+        for(const m of active){
+          m.samples.sort((a,b)=>a-b);m.median=m.samples[2];
+          const extra={};
+          if(m.id==='APEX')apexEngine(reference.slice(),extra);
+          else if(['APEXX','SIMD','SCALAR'].includes(m.id))apexXEngine.sort(reference.slice(),extra,m.id==='APEXX'?'auto':m.id==='SIMD'?'wasm-simd':'wasm-scalar');
+          m.path=extra.path||m.detail;
+        }
+        const ranking=active.sort((a,b)=>a.median-b.median),fastest=ranking[0].median;
+        for(const [rank,m] of ranking.entries()){
+          const tr=document.createElement('tr');
+          const a=document.createElement('td');a.textContent=`${rank+1}. ${m.name}`;if(m.id==='APEX'||m.id==='APEXX')a.className='primary';
+          const b=document.createElement('td');b.textContent=`${m.median.toFixed(4)} ms`;
+          const c=document.createElement('td');c.textContent=`${(m.median/fastest).toFixed(2)}×`;
+          const d=document.createElement('td');d.textContent=`✓ ${m.path}`;
+          tr.append(a,b,c,d);perfResults.append(tr);
+        }
+        for(const m of trials.filter(x=>x.skip)){
+          const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=4;
+          td.textContent=`${m.name}: N/A · keys are not half-step quantized`;
+          tr.append(td);perfResults.append(tr);
+        }
+        const apex=ranking.find(x=>x.id==='APEXX');
+        perfStatus.textContent=`Verified ${ranking.length} algorithms · ${num(n)} ${pattern} records · winner: ${ranking[0].name} · APEX X ${apex.median.toFixed(4)} ms (${(apex.median/fastest).toFixed(2)}× winner)`;
+      }catch(error){perfStatus.textContent=`BENCHMARK ERROR: ${error.message}`;console.error(error);}
+      finally{perfRun.disabled=false;}
+    }
+    perfRun.addEventListener('click',runSpeedTrials);
+
+    function updateTelemetry() {
+      els.compares.textContent=num(score.compares);
+      els.probes.textContent=num(score.probes);
+      els.writes.textContent=num(score.writes);
+      els.ops.textContent=num(score.total);
+    }
+    function updateControls() {
+      els.run.disabled=mode==='complete'||mode==='error';
+      els.bench.disabled=mode==='running'||mode==='sweeping'||mode==='interlude';
+      els.run.textContent=mode==='idle'?'▶ Run race':mode==='paused'?'▶ Resume':mode==='complete'?'✓ Finished':'Ⅱ Pause';
+      els.sound.textContent=synth.enabled?'♫ Sound on':'♫ Sound off';
+      els.sound.classList.toggle('off',!synth.enabled);
+      els.sound.setAttribute('aria-pressed',String(synth.enabled));
+    }
+    function showCurrent() {
+      const algorithm=ALGORITHMS[phaseIndex];
+      els.title.textContent=algorithm.title;
+      els.phase.textContent=`SORT ${phaseIndex+1} / ${ALGORITHMS.length}`;
+      els.activity.textContent=mode==='idle'?'READY TO RACE':mode==='running'?'LIVE · SORTING':mode==='paused'?'PAUSED':mode==='sweeping'?'ORDER VERIFIED':mode==='interlude'?'PREPARING NEXT ROUND':mode==='complete'?'RACE COMPLETE':'VERIFICATION ERROR';
+      els.hint.textContent=mode==='sweeping'||mode==='interlude'||mode==='complete'?'SORTED METRICS / VERIFIED':'WEIGHT METRIC / ASCENDING TARGET';
+      updateControls();updateTelemetry();
+    }
+    function renderContenders() {
+      els.contenders.replaceChildren();
+      ALGORITHMS.forEach((alg,i)=>{
+        const result=results.find(r=>r.id===alg.id);
+        const item=document.createElement('div');
+        item.className='competitor'+(result?' done':phaseIndex===i&&mode!=='complete'?' active':'');
+        const index=document.createElement('div');index.className='comp-index';index.textContent=String(i+1).padStart(2,'0');
+        const text=document.createElement('div');text.className='comp-text';
+        const name=document.createElement('div');name.className='comp-title';name.textContent=alg.title;
+        const sub=document.createElement('div');sub.className='comp-sub';sub.textContent=result?`${num(result.compares)} compares · ${num(result.probes)} probes · ${num(result.writes)} writes`:(phaseIndex===i&&mode!=='complete'?'Currently on the grid':'Awaiting identical input');
+        text.append(name,sub);
+        const state=document.createElement('div');state.className='comp-state';state.textContent=result?'VERIFIED':phaseIndex===i&&mode!=='complete'?'ACTIVE':'QUEUED';
+        item.append(index,text,state);els.contenders.append(item);
+      });
+    }
+    function renderLeaderboard() {
+      els.board.replaceChildren();
+      if (results.length===0) {
+        const empty=document.createElement('div');empty.className='board-empty';
+        const icon=document.createElement('div');icon.className='board-icon';icon.textContent='♛';
+        const line1=document.createElement('strong');line1.textContent='Your leaderboard is waiting';line1.style.color='#c9d7eb';
+        const line2=document.createElement('span');line2.textContent='Complete all five rounds to compare animated work.';
+        empty.append(icon,line1,line2);els.board.append(empty);
+      } else {
+        const ordered=results.slice().sort((a,b)=>a.total-b.total || a.index-b.index);
+        ordered.forEach((result,i)=>{
+          const row=document.createElement('div');row.className='board-row';
+          const rank=document.createElement('span');rank.className='rank';rank.textContent=String(i+1).padStart(2,'0');
+          const summary=document.createElement('div');
+          const name=document.createElement('div');name.className='board-name';name.textContent=ALGORITHMS[result.index].title;
+          const detail=document.createElement('div');detail.className='board-detail';detail.textContent=`${num(result.compares)} compares · ${num(result.probes)} probes · ${num(result.writes)} writes · ${result.cpuMs.toFixed(3)} ms compute`;
+          summary.append(name,detail);
+          const ops=document.createElement('div');ops.className='board-ops';ops.textContent=num(result.total);
+          const label=document.createElement('small');label.textContent='OPERATIONS';ops.append(label);
+          row.append(rank,summary,ops);els.board.append(row);
+        });
+      }
+      els.boardCaption.textContent=mode==='complete'?'final standings · animation counts only':`${results.length} / ${ALGORITHMS.length} verified · replay work only`;
+    }
+    function reset() {
+      source=buildInput(els.dataset.value);
+      working=copyRecords(source);
+      rangeMin=Math.min(...source.map(weight));rangeMax=Math.max(...source.map(weight));
+      synth.setRange(rangeMin,rangeMax);
+      phaseIndex=0;iterator=null;mode='idle';previousMode='running';
+      score={compares:0,probes:0,writes:0,total:0};
+      results=[];computeMs=0;phaseDiagnostics=null;rayVisual={left:-1,right:-1,serial:-99999};serial=0;touchedSerial.fill(-99999);touchedType.fill(0);
+      budget=0;sweepProgress=0;interlude=0;
+      els.overlay.classList.remove('visible');
+      els.status.textContent='Press Run to begin · Sound unlocks after interaction';
+      showCurrent();renderContenders();renderLeaderboard();draw();
+    }
+    function startPhase(index) {
+      phaseIndex=index;
+      working=copyRecords(source);
+      iterator=ALGORITHMS[index].execute(working);
+      score={compares:0,probes:0,writes:0,total:0};
+      serial=0;rayVisual={left:-1,right:-1,serial:-99999};touchedSerial.fill(-99999);touchedType.fill(0);
+      sweepProgress=0;interlude=0;budget=0;computeMs=0;phaseDiagnostics=null;mode='running';
+      els.overlay.classList.remove('visible');
+      els.status.textContent=`${ALGORITHMS[index].id} is running on the same seeded record set`;
+      showCurrent();renderContenders();draw();
+    }
+    function consumeEvent(event) {
+      if (!event || !['compare','probe','write'].includes(event.type) || !Array.isArray(event.indices)) {
+        throw new Error('Algorithm yielded an invalid visualization event');
+      }
+      if(event.type==='compare')score.compares++;
+      else if(event.type==='probe')score.probes++;
+      else score.writes+=event.indices.length;
+      score.total+=event.type==='write'?event.indices.length:1;
+      const type=event.type==='write'?2:1;
+      serial++;
+      if(event.type==='compare' && /ray$/.test(event.kind||'') && event.indices.length>=2) {
+        rayVisual={left:event.indices[0],right:event.indices[1],serial};
+      }
+      for (const index of event.indices) {
+        if (!Number.isInteger(index) || index<0 || index>=working.length) throw new Error('Invalid operation index');
+        touchedSerial[index]=serial;touchedType[index]=type;
+        synth.pulse(weight(working[index]),event.type);
+      }
+    }
+    function finishSort() {
+      if (!inspect(working)) throw new Error(`${ALGORITHMS[phaseIndex].id} produced an unsorted or unstable permutation`);
+      const orig=source.map(x=>x.id).sort((a,b)=>a-b);
+      const observed=working.map(x=>x.id).sort((a,b)=>a-b);
+      if (orig.some((v,i)=>v!==observed[i])) throw new Error('Algorithm lost or duplicated a record');
+      results.push({id:ALGORITHMS[phaseIndex].id,index:phaseIndex,compares:score.compares,probes:score.probes,writes:score.writes,total:score.total,cpuMs:computeMs,diagnostics:phaseDiagnostics});
+      iterator=null;sweepProgress=0;mode='sweeping';
+      els.status.textContent=`${ALGORITHMS[phaseIndex].id} verified · ${phaseDiagnostics?.methods?.join(" + ")||"no movement"} · ${num(score.writes)} visible writes`;
+      showCurrent();renderContenders();renderLeaderboard();
+    }
+    function nextStage() {
+      if (phaseIndex+1<ALGORITHMS.length) startPhase(phaseIndex+1);
+      else {
+        mode='complete';
+        els.overlayText.textContent='RACE COMPLETE ✓';els.overlay.classList.add('visible');
+        const winner=results.slice().sort((a,b)=>a.total-b.total || a.index-b.index)[0];
+        els.status.textContent=`FEWEST REPLAY EVENTS: ${winner.id} · ${num(winner.total)} · ${ALGORITHMS.length}/${ALGORITHMS.length} verified · use Speed Arena for CPU ranking`;
+        showCurrent();renderContenders();renderLeaderboard();
+      }
+    }
+    function fail(error) {
+      mode='error';iterator=null;
+      els.status.textContent=`Verification halted: ${error?.message||String(error)}`;
+      els.activity.textContent='VERIFICATION ERROR';
+      els.overlayText.textContent='SORT FAILED';els.overlay.classList.add('visible');
+      updateControls();console.error(error);
+    }
+
+    function resize() {
+      const bounds=els.canvas.getBoundingClientRect();
+      const dpr=Math.min(window.devicePixelRatio||1,3);
+      viewportWidth=Math.max(1,bounds.width);viewportHeight=Math.max(1,bounds.height);
+      els.canvas.width=Math.max(1,Math.round(viewportWidth*dpr));
+      els.canvas.height=Math.max(1,Math.round(viewportHeight*dpr));
+      context.setTransform(dpr,0,0,dpr,0,0);
+      paintGradient=context.createLinearGradient(12,0,viewportWidth-12,0);
+      paintGradient.addColorStop(0,COLOR.cyan);paintGradient.addColorStop(.5,COLOR.violet);paintGradient.addColorStop(1,COLOR.pink);
+      draw();
+    }
+    function draw() {
+      if (!viewportWidth||!viewportHeight)return;
+      const w=viewportWidth,h=viewportHeight;
+      context.fillStyle='#0e1420';context.fillRect(0,0,w,h);
+      const left=15,right=w-15,top=50,bottom=h-22,chartHeight=Math.max(10,bottom-top);
+      context.save();context.strokeStyle='rgba(164,189,229,.075)';context.lineWidth=1;
+      context.setLineDash([3,7]);
+      for (let p=0.25;p<=.75;p+=.25) {
+        const y=Math.round(bottom-chartHeight*p)+.5;
+        context.beginPath();context.moveTo(left,y);context.lineTo(right,y);context.stroke();
+      }
+      context.setLineDash([]);context.strokeStyle='rgba(165,193,231,.16)';
+      context.beginPath();context.moveTo(left,bottom+.5);context.lineTo(right,bottom+.5);context.stroke();context.restore();
+      const step=(right-left)/working.length;
+      const gap=step>=5?1.5:step>=3?1:.6;
+      const barWidth=Math.max(.5,step-gap);
+      const sweepCount=mode==='complete'?COUNT:mode==='sweeping'||mode==='interlude'?Math.floor(sweepProgress):0;
+      const freshness=Math.max(7,Math.min(55,Math.floor(speed/140)));
+      for (let i=0;i<working.length;i++) {
+        const level=clamp((weight(working[i])-rangeMin)/Math.max(1e-9,rangeMax-rangeMin),0,1);
+        const bh=Math.max(5,7+level*(chartHeight-8));
+        const x=left+i*step+gap*.5;
+        const y=bottom-bh;
+        let style=paintGradient;
+        if (i<sweepCount) style=COLOR.done;
+        else if (mode!=='sweeping' && mode!=='interlude' && mode!=='complete' && serial-touchedSerial[i]<=freshness) {
+          style=touchedType[i]===2?COLOR.write:COLOR.compare;
+        }
+        context.fillStyle=style;
+        if (style===COLOR.write || style===COLOR.compare) {
+          context.shadowBlur=10;context.shadowColor=style;
+        }
+        context.fillRect(x,y,barWidth,bh);
+        context.shadowBlur=0;
+      }
+      // An exact ray-witness event links the two endpoint records through a
+      // visible curved directional probe, rather than being a mere metaphor.
+      if(mode==='running' && rayVisual.left>=0 && serial-rayVisual.serial<Math.max(20,freshness*2)) {
+        const a=left+(rayVisual.left+.5)*step,b=left+(rayVisual.right+.5)*step;
+        const mx=(a+b)/2,span=Math.abs(b-a);
+        context.save();
+        context.strokeStyle='rgba(0,210,255,.72)';context.lineWidth=1.8;
+        context.shadowBlur=9;context.shadowColor=COLOR.cyan;
+        context.beginPath();context.moveTo(a,top-6);
+        context.quadraticCurveTo(mx,Math.max(6,top-12-span*.1),b,top-6);
+        context.stroke();
+        context.shadowBlur=0;
+        context.fillStyle=COLOR.compare;
+        context.beginPath();context.arc(a,top-6,2.4,0,Math.PI*2);
+        context.arc(b,top-6,2.4,0,Math.PI*2);context.fill();
+        context.restore();
+      }
+    }
+    function frame(now) {
+      const dt=Math.min(65,Math.max(0,now-(lastFrame||now)));
+      lastFrame=now;
+      if (mode==='running') {
+        budget=Math.min(1800,budget+dt*speed/1000);
+        const count=Math.min(1300,Math.floor(budget));budget-=count;
+        let isFinished=false;
+        const t0=performance.now();
+        try {
+          for (let i=0;i<count;i++) {
+            const next=iterator.next();
+            if(next.done) {phaseDiagnostics=next.value;isFinished=true;break;}
+            consumeEvent(next.value);
+          }
+          computeMs+=performance.now()-t0;
+          if(isFinished)finishSort();
+        } catch(error) {computeMs+=performance.now()-t0;fail(error);}
+        updateTelemetry();
+      } else if (mode==='sweeping') {
+        sweepProgress=Math.min(COUNT,sweepProgress+dt*COUNT/820);
+        if (sweepProgress>=COUNT) {
+          mode='interlude';interlude=0;
+          els.overlayText.textContent='ORDER VERIFIED ✓';els.overlay.classList.add('visible');
+          showCurrent();
+        }
+      } else if (mode==='interlude') {
+        interlude+=dt;
+        if (interlude>=460) nextStage();
+      }
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    // Instrumented, animation-free benchmark. Every contender receives an
+    // independent copy of the identical input, with warmup outside the clock.
+    // Timing is median of five batched measurements, not a claim of universal
+    // speed superiority over the browser's native optimized sort.
+    function instantBenchmark() {
+      const sourceCopy=copyRecords(source),measured=[];
+      for(let i=0;i<ALGORITHMS.length;i++) {
+        const contender=ALGORITHMS[i];
+        let report=null;
+        for(let w=0;w<4;w++)runToEnd(contender.execute(copyRecords(sourceCopy)));
+        const sample=[];
+        for(let batch=0;batch<5;batch++) {
+          const repeats=24,clones=Array.from({length:repeats},()=>copyRecords(sourceCopy));
+          const start=performance.now();
+          for(const copy of clones)report=runToEnd(contender.execute(copy));
+          sample.push((performance.now()-start)/repeats);
+          for(const copy of clones)if(!inspect(copy))throw new Error(`${contender.id} failed instant stable verification`);
+        }
+        sample.sort((a,b)=>a-b);
+        measured.push({id:contender.id,index:i,compares:report.counts.compares,probes:report.counts.probes,writes:report.counts.writes,total:report.counts.total,cpuMs:sample[2],diagnostics:report.diagnostics});
+      }
+      results=measured;
+      phaseIndex=ALGORITHMS.length-1;
+      working=copyRecords(sourceCopy);
+      apexXEngine.sort(working);
+      if(!inspect(working))throw new Error('Render verification failed');
+      score={compares:results[0].compares,probes:results[0].probes,writes:results[0].writes,total:results[0].total};
+      phaseDiagnostics=results[0].diagnostics;
+      iterator=null;mode='complete';sweepProgress=COUNT;
+      serial=0;touchedSerial.fill(-99999);touchedType.fill(0);
+      const winner=results.slice().sort((a,b)=>a.total-b.total||a.cpuMs-b.cpuMs)[0];
+      els.overlayText.textContent='BENCHMARK VERIFIED ✓';els.overlay.classList.add('visible');
+      els.status.textContent=`FEWEST REPLAY EVENTS: ${winner.id} · ${num(winner.total)} · CPU replay timings are NOT production benchmarks`;
+      showCurrent();renderContenders();renderLeaderboard();draw();
+    }
+
+    els.run.addEventListener('click',()=>{
+      if (mode==='idle') {
+        // Must be triggered from the actual user gesture; failure does not block sorting.
+        synth.unlock().catch(error=>console.warn('Audio context could not start:',error));
+        startPhase(0);
+      } else if (mode==='paused') {
+        mode=previousMode;showCurrent();
+      } else if (mode==='running'||mode==='sweeping'||mode==='interlude') {
+        previousMode=mode;mode='paused';showCurrent();
+      }
+    });
+    els.reset.addEventListener('click',reset);
+    els.dataset.addEventListener('change',reset);
+    els.bench.addEventListener('click',()=>{try{instantBenchmark();}catch(e){fail(e);}});
+    els.sound.addEventListener('click',()=>{
+      synth.toggle();
+      if (synth.enabled) synth.unlock().catch(error=>console.warn('Audio context could not start:',error));
+      updateControls();
+    });
+    els.speed.addEventListener('input',()=>{
+      speed=Number(els.speed.value);
+      els.speedOut.value=`${num(speed)} ev/s`;
+      els.speedOut.textContent=`${num(speed)} ev/s`;
+    });
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(els.canvas);
+    else window.addEventListener('resize',resize);
+    els.speedOut.value=`${num(speed)} ev/s`;
+    reset();
+    resize();
+    requestAnimationFrame(frame);
+
+    // Expose read-only diagnostics for browser console and local smoke tests.
+    Object.defineProperty(window,'CHROMA_DIAGNOSTICS',{
+      value:Object.freeze({
+        sourceSignature:()=>source.map(r=>`${r.id}:${weight(r)}`).join('|'),
+        inputPattern:()=>els.dataset.value,
+        snapshot:()=>({phase:phaseIndex+1,mode,score:{...score},results:results.map(x=>({...x})),verified:mode==='complete'&&results.length===ALGORITHMS.length,apexX:apexXEngine.status()}),
+        verifyCurrent:()=>inspect(working),
+        apexStats:()=>{let a=source.slice(),stats={};apexEngine(a,stats);return stats;},
+        runSpeed:()=>runSpeedTrials()
+      }),configurable:false,writable:false
+    });
+  })();
+  </script>
+<script id="xl-engine-source" type="text/plain">
+/* CHROMA APEX XL — stable schema-oriented reference sorter.
+ * All variants implement known algorithm families; claims are about engineering,
+ * not unprecedented mathematical sorting complexity. License: MIT.
+ */
+(function(root,factory){
+  const api=factory();
+  if(typeof module==='object'&&module.exports)module.exports=api;
+  else root.ChromaApexXL=api;
+})(typeof globalThis!=='undefined'?globalThis:this,function(){
+'use strict';
+const TYPES=new Set(['number','date','boolean','string','bigint','balance','array-length','token-sum','string-length','bytes','tuple','json','custom','auto']);
+function pathParts(path){
+  if(Array.isArray(path))return path.slice();
+  if(typeof path!=='string'||!path.trim())throw new TypeError('Schema requires a property path');
+  return path.split('.');
+}
+function compileSchema(schema){
+  if(!Array.isArray(schema)||!schema.length)throw new TypeError('Schema must contain key descriptors');
+  return schema.map(d=>{
+    if(typeof d==='string')d={path:d,type:'auto'};
+    if(!d||!TYPES.has(d.type||'auto'))throw new TypeError('Unsupported key type');
+    const parts=d.type==='balance'||d.type==='custom'?null:pathParts(d.path);
+    if(d.type==='custom'&&(typeof d.project!=='function'||typeof d.compare!=='function'))throw new TypeError('Custom key requires project and compare functions');
+    const type=d.type||'auto';
+    const get=parts?function(o){for(let j=0;j<parts.length;j++){if(o==null)return undefined;o=o[parts[j]];}return o;}:null;
+    return {path:d.path,type,get,project:d.project,compare:d.compare,desc:d.order==='desc',nullsLast:d.nulls!=='first'};
+  });
+}
+function balance(r){
+  if(!r || typeof r!=='object'||!Number.isFinite(r.rawWeight)||typeof r.entropySeed!=='string'||!Array.isArray(r.subTokens))throw new TypeError('Invalid balance record');
+  let s=0;for(const t of r.subTokens){if(typeof t!=='number'||!Number.isFinite(t))throw new TypeError('Invalid token');s+=t;}
+  let w=r.rawWeight+r.entropySeed.length*1.5+s%7;
+  if(!Number.isFinite(w))throw new TypeError('Nonfinite balance metric');
+  return w===0?0:w;
+}
+function canonicalJson(value,seen=new WeakSet()){
+  if(value===null)return null;
+  if(value instanceof Date)return ['date',value.toISOString()];
+  if(typeof value==='bigint')return ['bigint',String(value)];
+  if(typeof value==='number')return ['number',String(value)];
+  if(typeof value==='string')return ['string',value];
+  if(typeof value==='boolean')return ['boolean',value];
+  if(typeof value==='undefined')return ['undefined'];
+  if(typeof value!=='object')throw new TypeError('Non-serializable JSON key');
+  if(seen.has(value))throw new TypeError('Circular JSON sort key');
+  seen.add(value);
+  let result;
+  if(Array.isArray(value))result=['array',value.map(v=>canonicalJson(v,seen))];
+  else if(value instanceof Uint8Array)result=['bytes',Array.from(value)];
+  else result=['object',Object.keys(value).sort().map(k=>[k,canonicalJson(value[k],seen)])];
+  seen.delete(value);return result;
+}
+function convert(row,d){
+  let v=d.type==='balance'?balance(row):d.type==='custom'?d.project(row):d.get(row);
+  if(v==null)return null;
+  switch(d.type){
+    case 'balance': case 'number': if(typeof v!=='number')throw new TypeError('Numeric key expected');return Number.isNaN(v)?null:(v===0?0:v);
+    case 'date': {const t=v instanceof Date?v.getTime():(typeof v==='number'?v:Date.parse(v));return Number.isNaN(t)?null:t;}
+    case 'boolean': return Boolean(v)?1:0;
+    case 'string': if(typeof v!=='string')throw new TypeError('String key expected');return v;
+    case 'bigint': if(typeof v!=='bigint')throw new TypeError('BigInt key expected');return v;
+    case 'array-length': if(!Array.isArray(v))throw new TypeError('Array key expected');return v.length;
+    case 'token-sum': if(!Array.isArray(v))throw new TypeError('Array key expected');{let x=0;for(const item of v){if(typeof item!=='number'||!Number.isFinite(item))throw new TypeError('Invalid numeric token');x+=item;}return x;}
+    case 'string-length': return String(v).length;
+    case 'bytes': if(!(v instanceof Uint8Array))throw new TypeError('Uint8Array/Buffer key expected');return v;
+    case 'tuple': if(!Array.isArray(v))throw new TypeError('Tuple array key expected');return v;
+    case 'json': return JSON.stringify(canonicalJson(v));
+    case 'custom': return v;
+    case 'auto': if(v instanceof Date){const t=v.getTime();return Number.isNaN(t)?null:t;}
+      if(typeof v==='number'){return Number.isNaN(v)?null:(v===0?0:v);}
+      if(typeof v==='string'||typeof v==='bigint')return v;
+      if(typeof v==='boolean')return v?1:0;
+      throw new TypeError('Auto keys must be scalar primitives, Date, or null');
+  }
+}
+function cmpValue(a,b,d){
+  const an=a===null,bn=b===null;
+  if(an||bn)return an?(bn?0:(d.nullsLast?1:-1)):(d.nullsLast?-1:1);
+  if(d.type==='custom'){
+    const raw=d.compare(a,b);
+    if(typeof raw!=='number'||!Number.isFinite(raw))throw new TypeError('Custom compare must return finite number');
+    const c=Math.sign(raw);return d.desc?-c:c;
+  }
+  if(d.type==='bytes'){
+    const n=Math.min(a.length,b.length);for(let i=0;i<n;i++)if(a[i]!==b[i]){const c=a[i]<b[i]?-1:1;return d.desc?-c:c;}
+    const c=Math.sign(a.length-b.length);return d.desc?-c:c;
+  }
+  if(d.type==='tuple'){
+    const n=Math.min(a.length,b.length);
+    for(let i=0;i<n;i++){const c=cmpValue(a[i],b[i],{type:'auto',desc:false,nullsLast:d.nullsLast});if(c)return d.desc?-c:c;}
+    const c=Math.sign(a.length-b.length);return d.desc?-c:c;
+  }
+  const ta=typeof a,tb=typeof b;
+  if(ta!==tb){const rank={number:0,bigint:1,string:2};const c=(rank[ta]??3)-(rank[tb]??3);return d.desc?-Math.sign(c):Math.sign(c);}
+  const c=a<b?-1:a>b?1:0;
+  return d.desc?-c:c;
+}
+function projection(row,compiled){const o=new Array(compiled.length);for(let i=0;i<compiled.length;i++)o[i]=convert(row,compiled[i]);return o;}
+function compareProjection(a,b,compiled){for(let i=0;i<compiled.length;i++){const c=cmpValue(a[i],b[i],compiled[i]);if(c)return c;}return 0;}
+function stableReference(rows,schema){
+  const ds=compileSchema(schema),proj=rows.map(x=>projection(x,ds));
+  return Array.from({length:rows.length},(_,i)=>i).sort((a,b)=>compareProjection(proj[a],proj[b],ds)||a-b);
+}
+function createApexXL(){
+ let cap=0,keys=new Float64Array(0),ranks=new Uint32Array(0),scratch=new Uint32Array(0),hi=new Uint32Array(0),lo=new Uint32Array(0),bins=new Uint32Array(65536),out=[],dv=new DataView(new ArrayBuffer(8));
+ function reserve(n){if(n<=cap)return;cap=n;keys=new Float64Array(n);ranks=new Uint32Array(n);scratch=new Uint32Array(n);hi=new Uint32Array(n);lo=new Uint32Array(n);out=new Array(n);}
+ function radixFloat(n){
+   let dh=0,dl=0,fh=0,fl=0;
+   for(let i=0;i<n;i++){
+     dv.setFloat64(0,keys[i],false);let h=dv.getUint32(0,false),l=dv.getUint32(4,false);
+     if(h&0x80000000){h=(~h)>>>0;l=(~l)>>>0;}else h=(h^0x80000000)>>>0;
+     hi[i]=h;lo[i]=l;ranks[i]=i;
+     if(i){dh|=h^fh;dl|=l^fl;}else{fh=h;fl=l;}
+   }
+   let inp=ranks,dst=scratch,passes=0;
+   for(let pass=0;pass<8;pass++){
+     const bits=(pass<4?dl:dh),shift=(pass&3)*8;
+     if(!((bits>>>shift)&255))continue;
+     const word=pass<4?lo:hi;
+     bins.fill(0,0,256);
+     for(let i=0;i<n;i++)bins[(word[inp[i]]>>>shift)&255]++;
+     let p=0;for(let b=0;b<256;b++){const v=bins[b];bins[b]=p;p+=v;}
+     for(let i=0;i<n;i++){const x=inp[i];dst[bins[(word[x]>>>shift)&255]++]=x;}
+     [dst,inp]=[inp,dst];passes++;
+   }
+   return {indices:inp,passes,path:'f64-radix'};
+ }
+ function tryRayCut(n,desc){
+   // Exact cut witnesses: each active boundary is crossed by an inversion.
+   // Keep this an optional sparse-data optimization, never an approximate sorter.
+   const extreme=new Float64Array(n);let v=keys[n-1];
+   for(let i=n-1;i>=0;i--){if(desc?keys[i]>v:keys[i]<v)v=keys[i];extreme[i]=v;}
+   let max=keys[0],begin=-1,regions=[],area=0;
+   for(let i=0;i<n-1;i++){
+     if(desc?keys[i]<max:keys[i]>max)max=keys[i];
+     const bad=desc?max<extreme[i+1]:max>extreme[i+1];
+     if(bad){if(begin<0)begin=i;}
+     else if(begin>=0){const end=i+1;regions.push([begin,end]);area+=end-begin;begin=-1;}
+   }
+   if(begin>=0){regions.push([begin,n]);area+=n-begin;}
+   if(!regions.length||area>Math.min(n/4,regions.length*48)||regions.some(([a,b])=>b-a>96))return null;
+   for(let i=0;i<n;i++)ranks[i]=i;
+   for(const [start,end] of regions){
+     const xs=[];for(let i=start;i<end;i++)xs.push(i);
+     xs.sort((a,b)=>(desc?(keys[b]-keys[a]):(keys[a]-keys[b]))||a-b);
+     for(let j=0;j<xs.length;j++)ranks[start+j]=xs[j];
+   }
+   return {indices:ranks,passes:1,path:'certified-ray-repair'};
+ }
+ function countInt(n,min,span,desc){
+   bins.fill(0,0,span);
+   for(let i=0;i<n;i++)bins[keys[i]-min]++;
+   let p=0;
+   if(!desc)for(let b=0;b<span;b++){const x=bins[b];bins[b]=p;p+=x;}
+   else for(let b=span-1;b>=0;b--){const x=bins[b];bins[b]=p;p+=x;}
+   for(let i=0;i<n;i++)ranks[bins[keys[i]-min]++]=i;
+   return {indices:ranks,passes:2,path:'dense-index-count'};
+ }
+ function order(rows,schema,stats={}){
+   if(!Array.isArray(rows))throw new TypeError('Expected record array');
+   const ds=compileSchema(schema),n=rows.length;
+   if(n>4294967295)throw new RangeError('Indices must fit in 32 bits');
+   const start=typeof performance!=='undefined'?performance.now():Date.now();
+   reserve(n);stats.n=n;stats.columns=ds.length;stats.keyReads=n*ds.length;stats.passes=0;
+   if(n===0){stats.path='empty';return new Uint32Array(0);}
+   let result;
+   if(ds.length===1&&['number','balance','date','boolean','string-length','token-sum','array-length'].includes(ds[0].type)){
+     const desc=ds[0].desc,nullable=[];let num=0,min=Infinity,max=-Infinity,globalOrdered=true,prevKey=null,integers=true,falls=0;
+     for(let i=0;i<n;i++){
+       const v=convert(rows[i],ds[0]);
+       if(i&&cmpValue(prevKey,v,ds[0])>0){globalOrdered=false;falls++;}
+       prevKey=v;
+       if(v===null){nullable.push(i);continue;}
+       if(!Number.isFinite(v))throw new TypeError('Nonfinite numeric key not supported by fast path');
+       keys[num]=v;
+       num++;if(!Number.isSafeInteger(v))integers=false;
+       if(v<min)min=v;if(v>max)max=v;
+     }
+     if(globalOrdered){const identity=new Uint32Array(n);for(let i=0;i<n;i++)identity[i]=i;stats.path='ordered-zero-write';stats.passes=0;return identity;}
+     // The full finite-key vector is dense only if there are no nulls.
+     if(nullable.length===0){
+       const span=max-min+1;
+       if(n>=512&&falls<=Math.min(32,Math.max(2,(n/256)|0)))result=tryRayCut(n,desc);
+       if(result){} else if(integers&&Number.isSafeInteger(span)&&span>0&&span<=Math.min(65536,Math.max(2048,n*3))){result=countInt(n,min,span,desc);}
+       else if(n>64&&!desc)result=radixFloat(n);
+       else if(n>64&&desc){result=radixFloat(n); // reverse equal-value groups, not individual ties
+         const src=result.indices,dest=src===scratch?ranks:scratch;let p=0;
+         for(let end=n;end>0;){let begin=end-1;while(begin>0&&keys[src[begin-1]]===keys[src[end-1]])begin--;
+           for(let j=end-1;j>=begin;j--)dest[p++]=src[j];end=begin;}
+         result={indices:dest,passes:result.passes+1,path:'f64-radix-desc'};
+       }else{
+         const ix=Array.from({length:n},(_,i)=>i);ix.sort((a,b)=>cmpValue(keys[a],keys[b],ds[0])||a-b);
+         result={indices:ix,passes:1,path:'cached-numeric-native'};
+       }
+     }else{
+       const ix=Array.from({length:n},(_,i)=>i),col=new Array(n);
+       for(let i=0;i<n;i++)col[i]=convert(rows[i],ds[0]);
+       ix.sort((a,b)=>cmpValue(col[a],col[b],ds[0])||a-b);
+       result={indices:ix,passes:1,path:'nullable-cached'};
+     }
+   }else{
+     const cols=ds.map(()=>new Array(n));
+     for(let i=0;i<n;i++)for(let j=0;j<ds.length;j++)cols[j][i]=convert(rows[i],ds[j]);
+     let sorted=true;
+     scan:for(let i=1;i<n;i++)for(let j=0;j<ds.length;j++){
+       const c=cmpValue(cols[j][i-1],cols[j][i],ds[j]);
+       if(c>0){sorted=false;break scan;}if(c<0)break;
+     }
+     if(sorted){const identity=new Uint32Array(n);for(let i=0;i<n;i++)identity[i]=i;stats.path='ordered-zero-write';stats.passes=0;return identity;}
+     let clustered=false;
+     if(n>=512 && ds.length>1){
+       const groups=new Map();
+       for(let i=0;i<n;i++){
+         const k=cols[0][i];let g=groups.get(k);
+         if(!g){if(groups.size>=64){groups.clear();break;}g={key:k,items:[]};groups.set(k,g);}
+         g.items.push(i);
+       }
+       if(groups.size>=2 && groups.size<=64){
+         const orderedGroups=Array.from(groups.values()).sort((a,b)=>cmpValue(a.key,b.key,ds[0]));
+         let cursor=0;
+         for(const group of orderedGroups){
+           const a=group.items;
+           if(a.length>1)a.sort((u,v)=>{for(let j=1;j<ds.length;j++){const c=cmpValue(cols[j][u],cols[j][v],ds[j]);if(c)return c;}return u-v;});
+           for(let i=0;i<a.length;i++)ranks[cursor++]=a[i];
+         }
+         result={indices:ranks,passes:2,path:'categorical-lead-clusters'};clustered=true;
+       }
+     }
+     if(!clustered){
+       const ix=Array.from({length:n},(_,i)=>i);
+       ix.sort((a,b)=>{for(let j=0;j<ds.length;j++){const c=cmpValue(cols[j][a],cols[j][b],ds[j]);if(c)return c;}return a-b;});
+       result={indices:ix,passes:1,path:'cached-composite-index'};
+     }
+   }
+   stats.path=result.path;stats.passes=result.passes;
+   // Copy the indices: reusable work buffers must never leak out to callers.
+   return Uint32Array.from(result.indices.subarray?result.indices.subarray(0,n):result.indices);
+ }
+ function sort(rows,schema,stats={}){
+   const ix=order(rows,schema,stats),n=ix.length;
+   let writes=0;
+   // Destination references are compact even when payload objects are huge.
+   reserve(n);for(let i=0;i<n;i++)out[i]=rows[ix[i]];
+   for(let i=0;i<n;i++)if(rows[i]!==out[i]){rows[i]=out[i];writes++;}
+   stats.writes=writes;stats.referenceBytesApprox=8*n;
+   return rows;
+ }
+ function sortedCopy(rows,schema,stats={}){const ix=order(rows,schema,stats);return Array.from(ix,i=>rows[i]);}
+ return {order,sort,sortedCopy,compileSchema,project:(row,schema)=>projection(row,compileSchema(schema))};
+}
+return {createApexXL,compileSchema,projection,compareProjection,cmpValue,stableReference,balance};
+});
+
+</script>
+<script id="xl-worker-source" type="text/plain">
+
+'use strict';
+const {createApexXL,compileSchema,projection,compareProjection,stableReference}=self.ChromaApexXL;
+function rand(seed){let s=seed>>>0;return()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);}
+function make(n,profile,bytes){
+ const r=rand(0xc0ffee^n),regions=['north','south','east','west','APAC','EMEA','LATAM','central'],data=new Array(n);
+ for(let i=0;i<n;i++){
+  const v=profile==='balance'?Math.floor(r()*10000)-5000:r()*20000-10000;
+  data[i]={id:i,rawWeight:v,entropySeed:'ab'.repeat(i%8),subTokens:[i%7,(i*11)%13,(i*7)%19],metrics:{score:v,noise:i%111},tenant:{region:regions[Math.floor(r()*regions.length)]},identity:{name:'user-'+(r()*1000000|0).toString(36)+'-'+(i%17)},timestamp:new Date(1710000000000+Math.floor(r()*100000)*650000),tags:[i%6,(i*5)%9],payload:bytes?String(i).padStart(12,'0')+'X'.repeat(Math.max(0,bytes-12)):''};
+ }
+ if(profile==='sparse'){data.sort((a,b)=>a.metrics.score-b.metrics.score||a.id-b.id);for(let k=0;k<Math.min(9,Math.floor(n/300));k++){const p=50+k*100;const j=p+3;[data[p],data[j]]=[data[j],data[p]];}}
+ if(profile==='mixed')for(let i=0;i<n;i+=9)data[i].metrics.score=null;
+ return data;
+}
+const SCHEMAS={
+ nested:[{path:'tenant.region',type:'string'},{path:'metrics.score',type:'number',order:'desc'},{path:'identity.name',type:'string'},{path:'timestamp',type:'date'}],
+ mixed:[{path:'tenant.region',type:'string'},{path:'metrics.score',type:'number',nulls:'last'},{path:'tags',type:'array-length'},{path:'identity.name',type:'string'}],
+ balance:[{type:'balance'}],numeric:[{path:'metrics.score',type:'number'}],sparse:[{path:'metrics.score',type:'number'}]
+};
+function cached(a,schema){const d=compileSchema(schema),c=a.map(x=>projection(x,d));const ix=Array.from({length:a.length},(_,i)=>i);ix.sort((i,j)=>compareProjection(c[i],c[j],d)||i-j);return ix.map(i=>a[i]);}
+function direct(a,pattern){
+ switch(pattern){
+ case 'nested':return a.sort((a,b)=>a.tenant.region<b.tenant.region?-1:a.tenant.region>b.tenant.region?1:(b.metrics.score-a.metrics.score)||((a.identity.name<b.identity.name)?-1:(a.identity.name>b.identity.name)?1:a.timestamp-b.timestamp));
+ case 'balance':{const w=r=>r.rawWeight+r.entropySeed.length*1.5+r.subTokens.reduce((x,y)=>x+y,0)%7;return a.sort((a,b)=>w(a)-w(b));}
+ case 'numeric':case 'sparse':return a.sort((a,b)=>a.metrics.score-b.metrics.score);
+ default:return cached(a,SCHEMAS.mixed);
+ }
+}
+function verify(x,ref){if(x.length!==ref.length)throw Error('Length mismatch');for(let i=0;i<x.length;i++)if(x[i]!==ref[i])throw Error('Stable output mismatch at index '+i);}
+function run(n,profile,bytes){
+ if(n*bytes>110*1024*1024)throw Error('Payload cap: choose fewer records or a smaller payload to avoid browser memory exhaustion.');
+ const schema=SCHEMAS[profile],data=make(n,profile,bytes),ref=cached(data,schema),engine=createApexXL();
+ const candidates=[['APEX XL / packed references',a=>engine.sort(a,schema)],['JS native / cached keys',a=>cached(a,schema)],['JS native / direct fields',a=>direct(a,profile)]];
+ const scores=[];
+ for(const [name,fn]of candidates){const out=fn(data.slice());verify(out,ref);const samples=[];
+  for(let k=0;k<4;k++){const t=performance.now();const result=fn(data.slice());const elapsed=performance.now()-t;if(k>0)samples.push(elapsed);if(k===0)verify(result,ref);}
+  samples.sort((a,b)=>a-b);scores.push({name,ms:samples[1],verified:true});
+ }
+ return {n,profile,payloadBytes:bytes,payloadMB:n*bytes/(1024*1024),results:scores.sort((a,b)=>a.ms-b.ms)};
+}
+self.onmessage=e=>{try{const {n,profile,bytes}=e.data;self.postMessage({ok:true,...run(n,profile,bytes)});}catch(error){self.postMessage({ok:false,error:String(error),stack:error.stack});}};
+
+</script>
+<script>
+
+(function(){
+ const $=id=>document.getElementById(id),go=$('xlRun');
+ go.addEventListener('click',()=>{
+   const n=Number($('xlN').value),profile=$('xlPattern').value,bytes=Number($('xlPayload').value);
+   $('xlStatus').textContent='Generating identical records and benchmarking in an isolated Worker…';go.disabled=true;
+   const workerCode=document.getElementById('xl-engine-source').textContent+'\n'+document.getElementById('xl-worker-source').textContent;
+   const url=URL.createObjectURL(new Blob([workerCode],{type:'text/javascript'}));
+   let worker;
+   try{worker=new Worker(url);}catch(err){go.disabled=false;$('xlStatus').textContent='Web Worker could not start: '+err;URL.revokeObjectURL(url);return;}
+   const done=()=>{go.disabled=false;worker.terminate();URL.revokeObjectURL(url);};
+   worker.onerror=e=>{done();$('xlStatus').textContent='Benchmark failed: '+e.message;};
+   worker.onmessage=e=>{
+     done();const x=e.data;if(!x.ok){$('xlStatus').textContent=x.error;return;}
+     $('xlRecords').textContent=x.n.toLocaleString();$('xlBytes').textContent=x.payloadMB.toFixed(1)+' MiB';$('xlWinner').textContent=x.results[0].ms.toFixed(2)+' ms';
+     $('xlTable').replaceChildren();for(const r of x.results){const tr=document.createElement('tr');for(const v of [r.name,r.ms.toFixed(3),(r.ms/x.results[0].ms).toFixed(2)+'×','✓ exact / stable']){const cell=document.createElement('td');cell.textContent=v;tr.appendChild(cell);}$('xlTable').appendChild(tr);}
+     $('xlStatus').textContent=x.n.toLocaleString()+' '+x.profile+' records. Winner: '+x.results[0].name+'. Median of 3 post-warmup trials; complete record payloads retained. Results are specific to this browser and workload.';
+   };
+   worker.postMessage({n,profile,bytes});
+ });
+})();
+
+</script>
+</body>
+</html>

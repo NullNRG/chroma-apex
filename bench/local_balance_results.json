@@ -1,0 +1,35 @@
+{
+  "node": "v22.16.0",
+  "results": [
+    {
+      "n": 10000,
+      "method": "apex",
+      "median_ms": 8.345311000000038
+    },
+    {
+      "n": 10000,
+      "method": "direct",
+      "median_ms": 155.33484399999998
+    },
+    {
+      "n": 10000,
+      "method": "cached",
+      "median_ms": 10.556663999999955
+    },
+    {
+      "n": 100000,
+      "method": "apex",
+      "median_ms": 100.53694400000131
+    },
+    {
+      "n": 100000,
+      "method": "direct",
+      "median_ms": 2167.7861220000004
+    },
+    {
+      "n": 100000,
+      "method": "cached",
+      "median_ms": 143.2640850000007
+    }
+  ]
+}

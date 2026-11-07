@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "chroma-apex-ffi"
+version = "0.1.0"
+description = "ctypes binding to the CHROMA APEX stable native numeric sort"
+requires-python = ">=3.10"
+license = {text="MIT"}
+[tool.setuptools]
+py-modules = ["apex_sort"]

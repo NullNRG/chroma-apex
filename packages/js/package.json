@@ -1,0 +1,19 @@
+{
+  "name": "chroma-apex-xl",
+  "version": "0.1.0",
+  "description": "Stable complex-record sorting with cached projections and external JSONL streaming",
+  "type": "commonjs",
+  "main": "./apex_massive.js",
+  "files": [
+    "apex_massive.js",
+    "external_jsonl.js"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "node test.js && node test_external.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
