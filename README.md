@@ -112,3 +112,7 @@ The [interactive sorting demonstration](demo/index.html) is a standalone HTML fi
 ## License
 
 MIT. See [LICENSE](LICENSE) and [Licensing](docs/LICENSING.md). CHROMA APEX is an implementation and engineering toolkit employing established algorithm families; it does not claim a new general sorting complexity bound.
+
+## LLM token sampling integration
+
+A standalone [APEX LLM CPU sampler](integrations/llm/README.md) adds adaptive top-k, top-p, temperature, and greedy token selection. It provides a C++17 library, a PyTorch autoregressive decoder integration, an optional llama.cpp sampler adapter, correctness tests and [reproducible benchmarks](integrations/llm/ENGINE_REPORT.md). The model tests use untrained decoder configurations; no pretrained GGUF or Hugging Face model is included. The CPU-only measurements do not establish GPU or production-model acceleration.
