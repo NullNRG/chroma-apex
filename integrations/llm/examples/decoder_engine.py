@@ -140,12 +140,20 @@ class Decoder(nn.Module):
     def __init__(self, vocab,hidden,heads,kv_heads,layers):
         super().__init__();self.config=(vocab,hidden,heads,kv_heads,layers)
         self.embed=nn.Embedding(vocab,hidden)
+        self.pos_embed=nn.Embedding(2048,hidden)
         self.blocks=nn.ModuleList([Block(hidden,heads,kv_heads) for _ in range(layers)])
         self.final=Norm(hidden)
         self.projection=nn.Linear(hidden,vocab,bias=False)
-        self.projection.weight=self.embed.weight # weight tied: low extra memory
+        # Deterministic, untrained and independent projection. Weight tying on
+        # random weights makes the decoder repeat the input token indefinitely,
+        # making token-selection parity tests nearly vacuous.
+        nn.init.normal_(self.embed.weight,mean=0.0,std=0.12)
+        nn.init.normal_(self.pos_embed.weight,mean=0.0,std=0.12)
+        nn.init.normal_(self.projection.weight,mean=0.0,std=0.05)
     def forward_token(self,token,cache):
-        x=self.embed(token.reshape(1,1))
+        position=cache[0][0].shape[2] if cache and cache[0] is not None else 0
+        if position>=2048: raise ValueError('demo positional cache exceeded')
+        x=self.embed(token.reshape(1,1))+self.pos_embed(torch.tensor([[position]]))
         next_cache=[]
         for layer,kv in zip(self.blocks,cache):
             x,kv=layer(x,kv);next_cache.append(kv)

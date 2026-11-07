@@ -100,24 +100,32 @@ static int apx_llm_sample_impl(const float* logits, uint32_t n, float temperatur
         if(stats){stats->candidate_count=count;stats->strategy=1;stats->retained_count=1;}
         return 0;
     }
-    // For the usual top-40 at large vocab sizes, don't materialize the tail.
-    if (strategy==0 && top_k>1 && top_k<=128 && n>=16384) {
-        std::priority_queue<Candidate,std::vector<Candidate>,decltype(&better)> heap(&better);
+    // Bounded top-k buffer: no full-vocabulary allocations for k <= 128.
+    // Recompute the worst entry only after a new winner enters the buffer.
+    // On typical logits, replacement frequency is low relative to N.
+    if (strategy==0 && top_k>1 && top_k<=128) {
+        std::vector<Candidate> candidates;
+        candidates.reserve(std::min<uint32_t>(top_k,n));
         uint32_t count=0;
         bool has_positive_inf=false;
+        size_t worst=0;
         for(uint32_t i=0;i<n;i++) {
             float x=logits[i];
             if(std::isnan(x)||x==-std::numeric_limits<float>::infinity())continue;
             ++count;
             if(x==std::numeric_limits<float>::infinity())has_positive_inf=true;
             Candidate c{i,x,ordkey(x)};
-            if(heap.size()<top_k)heap.push(c);
-            else if(better(c,heap.top())){heap.pop();heap.push(c);}
+            if(candidates.size()<top_k) {
+                candidates.push_back(c);
+                if(candidates.size()>1 && better(candidates[worst],c)) worst=candidates.size()-1;
+            } else if(better(c,candidates[worst])) {
+                candidates[worst]=c;
+                worst=0;
+                for(size_t j=1;j<candidates.size();j++)
+                    if(better(candidates[worst],candidates[j]))worst=j;
+            }
         }
         if(!count)return 2;
-        std::vector<Candidate> candidates;
-        candidates.reserve(heap.size());
-        while(!heap.empty()){candidates.push_back(heap.top());heap.pop();}
         if(has_positive_inf){
             candidates.erase(std::remove_if(candidates.begin(),candidates.end(),
                 [](const Candidate&c){return c.value!=std::numeric_limits<float>::infinity();}), candidates.end());
