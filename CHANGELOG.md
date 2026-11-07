@@ -2,8 +2,9 @@
 
 ## 0.1.0 — 2026-11-06
 
-- Initial repository-ready research preview with C ABI stable index sorter and language bindings.
-- Stable double / uint64 / int64 semantic order and adaptive count/radix/monotonic paths.
-- Carried forward schema-driven JavaScript sorter, external JSONL streaming, and animated race.
-- Deterministic tests, local Boost pdqsort benchmark, reproducible technical report and provenance notices.
-- No claim of absolute sorting speed dominance or algorithmic novelty.
+- Native C11 stable index ordering for IEEE-754 float64 and signed/unsigned 64-bit keys.
+- Monotonic certificates, compact histogram dispatch and bytewise radix ordering.
+- C++, Python, Go, C# and Rust interoperability layers.
+- JavaScript schema-based complex-record ordering and external JSONL sorting.
+- Deterministic correctness tests, numeric and nested-record benchmarks, and standalone visualization.
+- Technical specification, public API documentation, usage examples, measurement protocol and competitor catalog.

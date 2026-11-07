@@ -1,129 +1,114 @@
-# CHROMA APEX — Adaptive Stable Sorting Toolkit
+# CHROMA APEX
 
-> **Research preview · v0.1.0** — an open, reproducible, multi-language toolkit for sorting numeric keys and heterogeneous records. Not a verified world-record sorter, and not a newly invented asymptotic sorting class.
+**Stable sorting for packed numeric keys, complex records, and large JSONL datasets.**
 
-CHROMA APEX is intentionally split into two layers:
+CHROMA APEX is a multi-language sorting toolkit built around a simple separation: calculate the order of records without moving their payloads, then materialize only what the application needs. It provides a C11 numeric sorting core with C++, Python, Go, Rust, and C# interfaces, plus a JavaScript engine for heterogeneous records and a Node.js external-file sorter.
 
-1. **APEX Native**: packed C11 stable ordering for IEEE-754 `float64`, `uint64`, and `int64` keys. Returns a **permutation of indices**, allowing large objects/payloads to remain stationary. Bounded-counting, bytewise radix, and monotonic fast paths are dispatched based on data characteristics. No external runtime dependency.
-2. **APEX XL JavaScript**: schema-driven stable sorting of nested objects (strings, dates, BigInts, token arrays, byte arrays, tuples, nulls, user projections), with an optional disk-backed JSONL tool for datasets larger than memory. Only numeric scalar data uses the native ABI; schema-driven object records use the JS engine.
+The repository contains source code, executable examples, deterministic tests, benchmarks, an interactive sorting visualization, and a technical report.
 
-The library is intended as a **competitive, configurable toolkit**, not a claim that any one strategy wins every workload. Known techniques are explicitly credited in `docs/RESEARCH_PAPER.md` and no third-party sorting implementation is bundled into the core.
+| Component | Input | Result | Status |
+|---|---|---|---|
+| Native C11 | float64, uint64, int64 | Stable uint32 index permutation | Tested |
+| C++ | Numeric vectors | Stable index vector | Tested |
+| Python / Go | Packed numeric arrays | Stable index permutation | Tested |
+| JavaScript APEX XL | Nested objects, compound schemas | Permutation / sorted array | Tested |
+| Node.js external JSONL | Newline-delimited JSON objects | Stable sorted file | Tested |
+| C# / Rust | Numeric arrays via FFI | Stable index permutation | Adapter source provided; target build not verified |
 
-## Performance snapshot
+## Why separate ordering from payloads?
 
-Local AMD EPYC 9V74 Linux / Clang-or-GCC Release C++ benchmark; cached numeric keys, stable index order, median of seven repetitions, sorted output verified after warm-up. Time in milliseconds; results vary with CPU and workload.
+Moving 256-byte, 4-KiB, or larger records during sorting can produce unnecessary memory traffic. CHROMA APEX operates on numeric keys or compact index lists. Existing records stay where they are until the caller applies the result. For costly object keys, APEX XL caches the extracted projections rather than repeatedly traversing nested structures in a comparator.
 
-| Dataset | APEX Native | Boost pdqsort + stable tie key | Relative |
-|---|---:|---:|---:|
-| 100k random64 | 2.895 | 9.688 | 3.35× faster |
-| 100k compact keys | 0.850 | 9.982 | 11.74× faster |
-| 100k mostly ordered | 1.047 | **0.736** | 1.42× slower |
-| 100k reversed | 0.389 | **0.262** | 1.49× slower |
+## Quick start
 
-**Caveat:** key extraction, payload copying, parsing, disk I/O, and parallel sorting are not in these native measurements. Comparison-sorting and radix-based approaches have different applicability; the latter relies on fixed-width numeric keys and additional scratch memory. Earlier object and streaming benchmarks belong to the previous APEX XL release and are *not* a substitute for comparative evaluation of this C core.
-
-Full raw timings: [`bench/local_baseline.csv`](bench/local_baseline.csv). Details and competitor status: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
-
-## Get started
-
-### Compile and test locally (no GitHub Actions)
-
-```sh
+~~~sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j2
 ctest --test-dir build --output-on-failure
-python3 -m unittest discover -s packages/python -p 'test_*.py'
-(cd packages/go && go test ./...)
-node packages/js/test.js
-./build/apex_benchmark 7
-```
+~~~
 
-Dependencies: C11/C++17 compiler, CMake 3.14+. Python 3.10+, Node 18+, and Go 1.20+ only for their respective binding/tests. No downloads, package installation, network calls, or hosted runners required. Boost pdqsort is benchmarked **only if** already available in compiler include paths.
+C11 and CMake 3.14+ are required for the core. C++17 is required for the benchmark and C++ examples.
 
-### C
+### C — stable indices
 
-```c
+~~~c
 #include "chroma_apex.h"
-double weights[] = {3.5, -1, 3.5, 2};
-uint32_t indices[4];
-apx_stats stats;
-int code = apx_order_f64(weights, 4, indices, &stats);
-/* indices: [1, 3, 0, 2], stable among equal weights */
-```
 
-### C++
+double weights[] = {3.5, -1.0, 3.5, 2.0};
+uint32_t order[4];
+apx_stats statistics;
+int rc = apx_order_f64(weights, 4, order, &statistics);
+// rc == APX_OK; order = {1, 3, 0, 2}
+~~~
 
-```cpp
-#include "apex.hpp"
-std::vector<double> weights = {2.5, -1, 2.5};
-auto indices = chroma_apex::order(weights); // [1,0,2]
-```
+Pass core/include as an include directory and link the chroma_apex library.
 
-Compile with the include paths `core/include` and `packages/cpp`, linking `chroma_apex`.
+### JavaScript — nested records
 
-### JavaScript / TypeScript
-
-```js
+~~~js
 const { createApexXL } = require('./packages/js/apex_massive');
-const sorter = createApexXL();
 const records = [
-  { id: 0, user: {country:'US'}, score: 6 },
-  { id: 1, user: {country:'CA'}, score: 8 }
+  { id: 10, user: { region: 'US' }, score: 4 },
+  { id: 11, user: { region: 'CA' }, score: 9 },
+  { id: 12, user: { region: 'CA' }, score: 9 }
 ];
 const schema = [
-  { path:'user.country', type:'string' },
-  { path:'score', type:'number', order:'desc' }
+  { path: 'user.region', type: 'string' },
+  { path: 'score', type: 'number', order: 'desc' }
 ];
-const sorted = sorter.sortedCopy(records, schema);
-```
+const engine = createApexXL();
+const ordered = engine.sortedCopy(records, schema);
+// IDs: [11, 12, 10], retaining original order on ties
+~~~
 
-The UMD module also attaches `window.ChromaApexXL` in a classic `<script>` tag. See [`packages/js`](packages/js) for more.
+### Node.js — external JSONL
 
-### Python
-
-```python
-from packages.python.apex_sort import Apex
-sorter = Apex() # loads build/libchroma_apex.so or platform equivalent
-indices = sorter.order_float64([3.5, -1, 3.5, 2])
-records = sorter.sorted_records_by_float64(records, lambda r: r['numeric_key'])
-```
-
-### Go / C# / Rust
-
-Bindings and examples: [`packages/go`](packages/go), [`packages/csharp`](packages/csharp), [`packages/rust`](packages/rust). Go and Python are tested locally. **C# and Rust are provided as FFI adapters but not compiled in this environment**; review/build in their target toolchains before deployment.
-
-### Massive JSONL files (Node.js)
-
-```sh
+~~~sh
 node packages/js/external_jsonl.js input.jsonl output.jsonl examples/schema.json 25000
-```
+~~~
 
-Stable by original line sequence, disk spill and multiway merge, and output is atomically renamed when possible. File size can exceed RAM, but individual JSONL records must fit in memory and the maximum resident memory depends on `chunkRecords`, record size and merge fan-in. The streaming tool is Node-only and not distributed as a browser sorter.
+For Python, Go, C#, Rust, C++, composite schemas, and the balance-record metric, see **[Usage examples](docs/EXAMPLES.md)**.
 
-### Visual race
+## Guarantees
 
-Open [`demo/index.html`](demo/index.html). The standalone demo embeds its own HTML, CSS, JS and any browser kernels, and does not require a server.
+- Stable ascending numeric ordering for the native core; equal keys retain their original relative order.
+- IEEE-754 numeric convention: negative infinity, finite values, positive infinity, then NaN; both zeros compare equal, and all NaNs compare equal.
+- The native functions do not modify the input key array; they write a permutation of uint32 indices.
+- APEX XL supports mixed schema columns, ascending/descending fields, explicit null placement, and key projection. Custom comparators must define a consistent order.
+- External JSONL sorting is stable across spill runs by preserving original line sequence.
+- Native invocation size is limited to UINT32_MAX records, and practical size is constrained by available memory.
 
-## Data types and guarantees
+## Measured performance
 
-- **C ABI**: exact IEEE-754 `double` with `-∞ < finite < +∞ < NaN`, signed zeros tied, NaNs tied, original order preserved; signed and unsigned 64-bit integer keys. Numeric input is never modified.
-- **JS**: stable compound schema keys (nulls-first/last, ascending/descending, nested paths, dates, strings, BigInts, arrays, bytes, custom comparator/projection). String comparison is code-unit order, **not locale collation**. User-supplied custom comparators must define a consistent order.
-- **Output**: the primary native artifact is a permutation, not an in-place reorder of heavy record payloads.
-- **Memory**: O(n + d) scratch for native radix/counting paths (plus output), where d is histogram width limited to 65,536 entries. Stable C path can use up to ~12n bytes of additional scratch excluding the caller-provided output.
-- **Scale**: native indices use `uint32_t`, so a single invocation supports up to 2^32−1 records in theory; practical limits are memory and address space. Use external sort for larger-than-memory workloads.
+Native benchmark: AMD EPYC virtual machine, GCC Release, 100,000 precomputed numeric keys, median of seven runs. Both implementations output stable index permutations; values are milliseconds.
 
-## Licenses and IP
+| Pattern | APEX Native | Boost pdqsort with stable index tie-break |
+|---|---:|---:|
+| Random 64-bit-derived keys | **2.895** | 9.688 |
+| Compact keys, many duplicates | **0.850** | 9.982 |
+| Mostly ordered | 1.047 | **0.736** |
+| Descending | 0.389 | **0.262** |
 
-MIT-licensed original CHROMA APEX source; see [`LICENSE`](LICENSE), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), and [`docs/LEGAL_AND_PROVENANCE.md`](docs/LEGAL_AND_PROVENANCE.md). Describing a sorting method does not confer exclusive rights to it, and **an MIT license cannot guarantee freedom from third-party patent claims**. Obtain an independent legal review before making commercial patent-clearance assertions.
+This is a fixed-width numeric benchmark, not a general-object benchmark. The JS composite-key results have different winners depending on workload. No local head-to-head result exists yet for IPS⁴o, Typhoon, Powersort, driftsort, or glidesort.
 
-## Research integrity
+[Full measurements](docs/BENCHMARKS.md) · [Comparison catalog](docs/COMPARISONS.md) · [Benchmark protocol](docs/BENCHMARK_PROTOCOL.md)
 
-The design deliberately reuses well-established *mathematical techniques* (histograms, radix-style numeric keys, monotonicity checks, stable index ordering) in an application-specific dispatcher. That is not copying third-party implementation source code. See `docs/RESEARCH_PAPER.md` for proof sketch and limitations. Neither Typhoon nor IPS⁴o was executed in this local benchmark; optional upstream IPS⁴o support is documented and can be enabled locally. No GitHub Actions or paid runners are used.
+## Documentation
 
-## Roadmap
+| Document | Contents |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Data model, dispatch, complexity, memory, stable output |
+| [API reference](docs/API.md) | Native ABI, language adapters, JavaScript schema API |
+| [Examples](docs/EXAMPLES.md) | Usage in C, C++, Python, Go, C#, Rust, JS and Node |
+| [Technical paper](docs/RESEARCH_PAPER.md) | Formal problem statement, correctness and complexity |
+| [Comparison catalog](docs/COMPARISONS.md) | Sorting families, competitors, trade-offs and evidence |
+| [Benchmarks](docs/BENCHMARKS.md) | Recorded native and JS results, including losses |
+| [Benchmark protocol](docs/BENCHMARK_PROTOCOL.md) | Reproducible, workload-equivalent evaluation |
+| [Validation](docs/VALIDATION.md) | Test coverage and current validation boundaries |
+| [Licensing](docs/LICENSING.md) | MIT license scope, dependency relationships and provenance |
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md). Priority areas: real multi-core partitioning, binary-columnar composite keys, bounded byte-budget external sorting, portable SIMD evaluation, fully tested bindings, local competitor builds, sanitizer/fuzz validation, memory-mapped IO, and reproducible cross-hardware benchmarking.
+The [interactive sorting demonstration](demo/index.html) is a standalone HTML file.
 
-## Publication
+## License
 
-This repository is prepared for a dedicated GitHub repository. See [`docs/PUBLISH.md`](docs/PUBLISH.md). Creating a separate GitHub repository requires GitHub repository-creation access; do not upload to an unrelated existing project.
+MIT. See [LICENSE](LICENSE) and [Licensing](docs/LICENSING.md). CHROMA APEX is an implementation and engineering toolkit employing established algorithm families; it does not claim a new general sorting complexity bound.

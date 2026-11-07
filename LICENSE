@@ -19,9 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Dependency notices: the optional Boost pdqsort used by native_compare.cpp is
-Boost Software License 1.0 and is provided by the local Boost installation.
-The optional upstream IPS4o implementation, if installed separately, is BSD
-2-Clause. The upstream Typhoon implementation is BSD 3-Clause and is not
-bundled or compiled by this project.
