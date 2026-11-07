@@ -120,3 +120,7 @@ A standalone [APEX LLM CPU sampler](integrations/llm/README.md) adds adaptive to
 ### Pretrained causal-LM integration
 
 An [APEX next-token selector for Hugging Face causal models](integrations/llm/pretrained/README.md) integrates native sampling into an actual KV-cache decoding loop and offers adaptive dispatch between APEX and device-resident PyTorch. The [CPU selection results](integrations/llm/pretrained/BENCHMARKS.md) are diagnostic synthetic-logit measurements; no pretrained checkpoint was executable on the offline test host.
+
+## Browser pretrained inference lab
+
+The [browser inference lab](integrations/llm/browser/index.html) integrates APEX into real model logits selection using a Transformers.js logits processor. Its Gemma 3 and SmolLM2 presets, APEX/reference/native comparisons, and offline selector benchmarks are documented in [browser inference documentation](integrations/llm/browser/README.md). No pretrained-model speedup is claimed until weights are executed on target hardware.

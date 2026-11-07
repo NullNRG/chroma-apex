@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0d14"><title>CHROMA APEX · Browser Inference Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0d14;--panel:#121622;--panel2:#171d2b;--edge:#2b3546;--text:#ecf2ff;--mute:#8492ab;--cyan:#00d2ff;--violet:#9357ff;--pink:#ff0080;--green:#00f59b;--bad:#ff627d}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 76% -10%,#182640 0,transparent 55%),var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}main{max-width:1280px;padding:28px 24px 64px;margin:auto}header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}.eyebrow{font-size:11px;font-weight:700;letter-spacing:.23em;color:var(--cyan)}h1{font-size:clamp(26px,4vw,44px);letter-spacing:-.06em;line-height:1.06;margin:10px 0 10px}h1 span{background:linear-gradient(95deg,var(--cyan),var(--violet),var(--pink));background-clip:text;-webkit-text-fill-color:transparent}h2{font-size:16px;letter-spacing:-.015em;margin:0 0 16px}h3{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em;margin:0 0 8px}.sub{color:var(--mute);margin:0;max-width:700px;font-size:13px}.chip{display:inline-block;border:1px solid var(--edge);background:#101829;border-radius:30px;padding:7px 12px;color:#b9c8de;font-size:11px}.cards{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px}.card{background:linear-gradient(145deg,#141a26,#10141f);border:1px solid var(--edge);border-radius:15px;padding:20px;min-width:0}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.field{display:flex;flex-direction:column;gap:6px}label{font-size:11px;letter-spacing:.05em;color:#aebbd0;font-weight:600}input,select,textarea{width:100%;min-width:0;border:1px solid #343d53;background:#0b111d;color:var(--text);border-radius:9px;padding:10px 11px;font:inherit;outline:none}textarea{resize:vertical;min-height:96px}input:focus,select:focus,textarea:focus{border-color:var(--cyan)}button{cursor:pointer;border:1px solid #37405a;background:#1d2840;color:white;border-radius:9px;padding:10px 16px;font:600 12px system-ui;transition:filter .13s}button:hover{filter:brightness(1.15)}button:disabled{cursor:wait;opacity:.52}button.primary{background:linear-gradient(90deg,#00b6df,#7944d7);border:0;color:white}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.stat{border:1px solid var(--edge);border-radius:10px;padding:14px 12px;background:#0c1320}.stat .name{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.09em}.stat .value{font-size:clamp(20px,2.4vw,30px);font-weight:750;letter-spacing:-.04em;margin-top:5px;white-space:nowrap}.stat .detail{font-size:10px;color:var(--mute)}.strong{color:var(--green)}.warn{color:var(--bad)}.meta{color:var(--mute);font-size:12px;margin-top:12px}.log{font:11px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;background:#080d16;border:1px solid #273142;border-radius:10px;padding:12px;max-height:240px;overflow:auto;min-height:86px}.results{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;border-bottom:1px solid #273041;padding:10px 7px}th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}td.num{text-align:right;font-variant-numeric:tabular-nums}pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#090e18;border:1px solid var(--edge);border-radius:9px;padding:13px;max-height:240px;overflow:auto}.full{grid-column:1/-1}.note{padding-left:10px;border-left:2px solid var(--violet);color:#aab8cf;font-size:12px}.rowhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.bars{display:flex;height:100px;gap:5px;align-items:end;margin:15px 0}.bar{flex:1;min-width:10px;border-radius:4px 4px 0 0;background:linear-gradient(0deg,#6737d8,#00d2ff);height:8%;transition:height .25s}.bar.reference{background:linear-gradient(0deg,#bf186c,#ff0080)}.bar.native{background:linear-gradient(0deg,#117750,#00f59b)}code{color:#b7eaff}a{color:#7ee6fa;text-decoration:none}a:hover{text-decoration:underline}.tiny{font-size:11px;color:var(--mute)}.muted{color:var(--mute)}#system{color:#bdcce6}.pill{display:inline-block;border-radius:99px;background:#18313b;color:#67d8f1;padding:3px 10px;font-size:10px;font-weight:700}footer{margin-top:20px;font-size:11px;color:var(--mute);line-height:1.7}@media(max-width:850px){.cards{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){main{padding:18px 12px 40px}.card{padding:15px}.grid2{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><div><div class="eyebrow">CHROMA / APEX ENGINEERING</div><h1>Browser <span>Inference Lab</span></h1><p class="sub">Pretrained model, real next-token logits, deterministic reference vs APEX, native generation, and full tokens-per-second telemetry. No backend or inference server.</p></div><div><span class="chip" id="system">Checking runtime…</span></div></header>
+<div class="cards">
+<section class="card"><div class="rowhead"><h2>01 · Pretrained model</h2><span class="pill" id="loaded-pill">NOT LOADED</span></div><div class="grid2">
+<div class="field"><label for="model">MODEL REPOSITORY</label><select id="model"><option value="HuggingFaceTB/SmolLM2-135M-Instruct">SmolLM2 135M · ~118MB q4f16</option><option value="onnx-community/gemma-3-270m-it-ONNX">Gemma 3 270M IT · ~480MB q4f16</option><option value="onnx-community/gemma-3-270m-ONNX">Gemma 3 270M base · ~488MB q4f16</option><option value="custom">Custom ONNX Transformers.js model</option></select></div>
+<div class="field"><label for="device">INFERENCE BACKEND</label><select id="device"><option value="auto">Auto · WebGPU if available</option><option value="webgpu">WebGPU GPU</option><option value="wasm">WASM CPU</option></select></div></div>
+<div class="grid2" style="margin-top:12px"><div class="field"><label for="dtype">WEIGHT FORMAT</label><select id="dtype"><option value="auto">Auto · q4f16 GPU / q8 CPU</option><option value="q4f16">q4f16</option><option value="q8">q8</option><option value="q4">q4</option><option value="fp32">fp32</option></select></div><div class="field"><label for="repo">CUSTOM MODEL ID (OPTIONAL)</label><input id="repo" placeholder="owner/model-name" disabled></div></div>
+<div class="actions"><button class="primary" id="load">Download / load model</button><button id="probe">Run offline sampler test</button><span class="tiny" id="progress">Model weights will download from Hugging Face on first load.</span></div>
+<p class="note">Gemma weights have their own license terms. The demo uses pretrained checkpoints and loads them into your browser. For production deployment check the model card and applicable terms. No weights are bundled with CHROMA.</p>
+</section>
+<section class="card"><h2>02 · Token selection</h2><div class="grid4">
+<div class="field"><label for="tokens">TOKENS</label><input id="tokens" type="number" min="2" max="256" value="32"></div><div class="field"><label for="topk">TOP-K</label><input id="topk" type="number" min="0" value="40"></div><div class="field"><label for="topp">TOP-P</label><input id="topp" type="number" step="0.05" min="0.01" max="1" value="0.95"></div><div class="field"><label for="temp">TEMP</label><input id="temp" type="number" step="0.1" min="0" value="0.8"></div></div>
+<div class="grid2" style="margin-top:12px"><div class="field"><label for="seed">DETERMINISTIC SEED</label><input id="seed" type="number" value="424242"></div><div class="field"><label for="mode">SINGLE-RUN MODE</label><select id="mode"><option value="apex">APEX CPU sampler</option><option value="reference">Reference CPU sampler</option><option value="native">Native model sampling</option></select></div></div>
+<div class="field" style="margin-top:12px"><label for="prompt">PROMPT</label><textarea id="prompt">Explain why sampling faster does not necessarily make an LLM generate tokens faster.</textarea></div>
+<div class="actions"><button id="run" disabled>Generate one run</button><button class="primary" id="race" disabled>Benchmark all 3 modes</button><button id="export" disabled>Export results JSON</button></div>
+<p class="tiny">APEX and reference use the same seeded draw and should produce identical token IDs. Native uses the model's built-in sampler; token outputs may differ. The custom CPU hooks can require GPU readback.</p>
+</section>
+<section class="card full"><div class="rowhead"><h2>03 · End-to-end model metrics</h2><span class="tiny">Model-specific, measured in this browser only</span></div>
+<div class="grid4"><div class="stat"><div class="name">APEX</div><div class="value" id="apex-tps">—</div><div class="detail">generated tokens/sec</div></div><div class="stat"><div class="name">Reference</div><div class="value" id="ref-tps">—</div><div class="detail">generated tokens/sec</div></div><div class="stat"><div class="name">Native runtime</div><div class="value" id="native-tps">—</div><div class="detail">approx. tokens/sec</div></div><div class="stat"><div class="name">APEX vs reference</div><div class="value" id="speedup">—</div><div class="detail">full generation, same tokens</div></div></div>
+<div id="bars" class="bars"><div class="bar" style="height:5%"></div><div class="bar reference" style="height:5%"></div><div class="bar native" style="height:5%"></div></div>
+<div style="overflow:auto"><table class="results"><thead><tr><th>Mode</th><th class="num">Steps</th><th class="num">Total ms</th><th class="num">Sampler ms</th><th class="num">Tok/s</th><th>Parity</th></tr></thead><tbody id="table"><tr><td colspan="6" class="muted">Load a model and benchmark to populate results.</td></tr></tbody></table></div>
+</section>
+<section class="card"><h2>04 · Live output</h2><pre id="response">Generation text appears here.</pre><h3>Event log</h3><div id="log" class="log" aria-live="polite">Browser inference lab initialized.</div></section>
+<section class="card"><h2>05 · Offline selection benchmark</h2><p class="sub">No model download required. Tests synthetic vocabularies of 8K, 49K and 128K to identify where the APEX ordering primitive is competitive. These results are <strong>not LLM tokens/sec</strong>.</p><div class="actions"><button id="micro">Run JS selector benchmark</button></div><div id="micro-table" style="margin-top:14px" class="tiny">No offline benchmark run.</div></section>
+</div>
+<footer>Browser-only · Transformers.js 4.3.2 from jsDelivr · model ONNX weights from Hugging Face · APEX sorting implementation in this repository. Full-model performance and processor hooking must be tested on the actual target hardware. Native sampling, reference CPU masking and APEX CPU masking have different overheads. Never interpret selector speed as an equivalent improvement in neural model inference. · <a href="https://github.com/NullNRG/chroma-apex">Repository</a></footer>
+</main><script type="module">
+/* SPDX-License-Identifier: MIT
+ * CHROMA APEX browser token-selection kernels.
+ * CPU-side logits selector. Does not accelerate neural tensor computation.
+ */
+function makeRng(seed = 0xdecafbad) {
+  let s = (Number(seed) >>> 0) || 0x6d2b79f5;
+  return () => {
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+    return (s >>> 0) / 4294967296;
+  };
+}
+const cmp = (scores, a, b) => {
+  const x = canonical(scores[a]), y = canonical(scores[b]);
+  return x > y ? -1 : x < y ? 1 : a - b;
+};
+function canonical(x) { return Number.isNaN(x) ? -Infinity : x; }
+function worse(scores, a, b) { return cmp(scores, a, b) > 0; }
+function swap(a,i,j) { const x=a[i];a[i]=a[j];a[j]=x; }
+function heapTop(scores, k) {
+  const n=scores.length;
+  const h=new Uint32Array(k);
+  let size=0;
+  function rise(i){while(i>0){const p=(i-1)>>1;if(!worse(scores,h[i],h[p])) break;swap(h,i,p);i=p;}}
+  function sink(i){for(;;){const l=i*2+1;if(l>=size)break;const r=l+1;let w=l;if(r<size&&worse(scores,h[r],h[l]))w=r;if(!worse(scores,h[w],h[i]))break;swap(h,i,w);i=w;}}
+  for(let i=0;i<n;i++){
+    if(size<k){h[size]=i;rise(size);size++;}
+    else if(cmp(scores,i,h[0])<0){h[0]=i;sink(0);}
+  }
+  return Array.from(h).sort((a,b)=>cmp(scores,a,b));
+}
+class ApexRadix {
+  constructor() { this.capacity=0; this.ids=new Uint32Array(0); this.tmp=new Uint32Array(0); this.bits=new Uint32Array(0); this.hist=new Uint32Array(256); this.view=new DataView(new ArrayBuffer(4)); }
+  ensure(n){if(n<=this.capacity)return; this.capacity=n; this.ids=new Uint32Array(n);this.tmp=new Uint32Array(n);this.bits=new Uint32Array(n);}
+  rank(scores){
+    const n=scores.length;this.ensure(n); let a=this.ids,b=this.tmp;const dv=this.view;
+    for(let i=0;i<n;i++){
+      let v=canonical(scores[i]);if(Object.is(v,-0))v=0;
+      dv.setFloat32(0,v,true);
+      const bits=dv.getUint32(0,true);
+      const sortable=bits&0x80000000 ? (~bits>>>0) : ((bits^0x80000000)>>>0);
+      this.bits[i]=~sortable>>>0; a[i]=i;
+    }
+    for(let shift=0;shift<32;shift+=8){
+      const h=this.hist;h.fill(0);
+      for(let i=0;i<n;i++)h[(this.bits[a[i]]>>>shift)&255]++;
+      let sum=0;for(let j=0;j<256;j++){const c=h[j];h[j]=sum;sum+=c;}
+      for(let i=0;i<n;i++){const id=a[i];b[h[(this.bits[id]>>>shift)&255]++]=id;}
+      const t=a;a=b;b=t;
+    }
+    return a.subarray(0,n);
+  }
+}
+const reusable = new ApexRadix();
+function orderCandidates(scores, {algorithm='apex',topK=0, radix=reusable}={}) {
+  const n=scores.length;
+  if(!n)throw new RangeError('Empty logits');
+  const k=Math.max(0,Math.trunc(Number(topK)||0));
+  if(algorithm==='reference'){
+    const ids=Array.from({length:n},(_,i)=>i);
+    ids.sort((a,b)=>cmp(scores,a,b));
+    return k>0 ? ids.slice(0,Math.min(k,n)) : ids;
+  }
+  if(k>0&&k<Math.min(n,Math.max(128,n/4))) return heapTop(scores,k);
+  const ordered=radix.rank(scores);
+  return k>0 ? ordered.subarray(0,Math.min(k,n)) : ordered;
+}
+function argmax(scores) {
+  if(!scores.length)throw new RangeError('Empty logits');
+  let best=0;
+  for(let i=1;i<scores.length;i++)if(cmp(scores,i,best)<0)best=i;
+  return best;
+}
+function selectToken(scores,{algorithm='apex',topK=40,topP=0.95,temperature=0.8,u=0.5,radix=reusable}={}) {
+  if(!(topP>0&&topP<=1))throw new RangeError('topP must be in (0,1]');
+  if(!Number.isFinite(temperature)||temperature<0)throw new RangeError('Invalid temperature');
+  if(!(u>=0&&u<1))throw new RangeError('u must be in [0,1)');
+  if(!scores || !scores.length)throw new RangeError('Empty logits');
+  const n=scores.length;
+  if(temperature===0)return argmax(scores);
+  const k=Math.max(0,Math.trunc(Number(topK)||0));
+  // Full-vocabulary, untruncated sampling requires no sorting at all.
+  if(k===0&&topP===1){
+    let max=-Infinity, count=0;
+    for(let i=0;i<n;i++){const x=canonical(scores[i]);if(x>max){max=x;count=1;}else if(x===max)count++;}
+    if(max===Infinity){let ix=0;for(let i=0;i<n;i++)if(scores[i]===Infinity){if(u<1/count)return i;u-=1/count;ix=i;}return ix;}
+    if(max===-Infinity)return 0;
+    let sum=0;for(let i=0;i<n;i++){const x=canonical(scores[i]);if(x!==-Infinity)sum+=Math.exp((x-max)/temperature);}
+    let target=u*sum;
+    for(let i=0;i<n;i++){const x=canonical(scores[i]);if(x!==-Infinity){target-=Math.exp((x-max)/temperature);if(target<0)return i;}}
+    return argmax(scores);
+  }
+  const order=orderCandidates(scores,{algorithm,topK:k,radix});
+  if(canonical(scores[order[0]])===Infinity){let positive=0;for(let j=0;j<order.length&&scores[order[j]]===Infinity;j++)positive++;return order[Math.min(positive-1,Math.floor(u*positive))];}
+  const peak=canonical(scores[order[0]]);
+  if(peak===-Infinity)return order[0];
+  const probs=new Float64Array(order.length);let total=0;
+  for(let j=0;j<order.length;j++){
+    const x=canonical(scores[order[j]]);
+    const w=x===-Infinity?0:Math.exp((x-peak)/temperature);
+    probs[j]=w;total+=w;
+  }
+  if(!(total>0))return order[0];
+  const limit=total*topP;
+  let included=0,mass=0;
+  for(let j=0;j<probs.length;j++){mass+=probs[j];included++;if(mass>=limit)break;}
+  let target=u*mass;
+  for(let j=0;j<included;j++){target-=probs[j];if(target<0)return order[j];}
+  return order[included-1];
+}
+function selectWithStats(scores,opts){const a=performance.now();const token=selectToken(scores,opts);return {token,ms:performance.now()-a};}
+
+/* SPDX-License-Identifier: MIT
+ * Transformers.js v4 logits-processor adapter.
+ * Output scores are forced to a single deterministic token at each generation step.
+ * Only batch size one is supported. On WebGPU, accessing tensor.data may incur
+ * an expensive device-to-host synchronization; this cost is part of the test.
+ */
+
+function createSelectionProcessor(LogitsProcessor, {
+  algorithm='apex',topK=40,topP=0.95,temperature=0.8,seed=1,onSelect=null
+}={}) {
+  if(typeof LogitsProcessor!=='function')throw new TypeError('LogitsProcessor constructor unavailable');
+  const random=makeRng(seed);
+  const radix=new ApexRadix();
+  class SelectionProcessor extends LogitsProcessor {
+    constructor(){super();this.calls=0;this.samplingMs=0;this.tensorMs=0;this.ids=[];this.algorithm=algorithm;}
+    _call(inputIds,logits){
+      if(!logits||!logits.data||typeof logits.data.length!=='number')throw new Error('Transformers.js logits Tensor has no CPU-accessible data');
+      const data=logits.data;
+      if(logits.dims && logits.dims.length>=2 && logits.dims[0]!==1)throw new Error('Batch inference not supported: expected batch=1');
+      const started=performance.now();
+      const id=selectToken(data,{algorithm,topK,topP,temperature,u:random(),radix});
+      const chosenAt=performance.now();
+      data.fill(-Infinity);
+      data[id]=0;
+      const end=performance.now();
+      this.calls++;
+      this.samplingMs+=(chosenAt-started);
+      this.tensorMs+=(end-started);
+      this.ids.push(id);
+      if(onSelect)onSelect({id,step:this.calls,samplingMs:chosenAt-started});
+      return logits;
+    }
+  }
+  return new SelectionProcessor();
+}
+
+async function getRuntime({version='4.3.2',url=null}={}){
+  // A documented native ESM CDN entry point. Downloaded only when user presses Load.
+  const specifier=url||`https://cdn.jsdelivr.net/npm/@huggingface/transformers@${version}`;
+  const mod=await import(/* @vite-ignore */ specifier);
+  if(typeof mod.pipeline!=='function'||typeof mod.LogitsProcessor!=='function')throw new Error('Transformers.js runtime missing pipeline or LogitsProcessor exports');
+  return mod;
+}
+
+async function loadPipeline({model,device='wasm',dtype='q8',progress=()=>{},runtime}){
+  if(!runtime) runtime=await getRuntime();
+  const options={device,dtype,progress_callback:progress};
+  return await runtime.pipeline('text-generation',model,options);
+}
+
+function getGeneratedText(output){
+  try{
+    const generated=output[0]?.generated_text;
+    if(typeof generated==='string')return generated;
+    if(Array.isArray(generated))return generated.at(-1)?.content??JSON.stringify(generated);
+    return JSON.stringify(output);
+  }catch{return String(output);}
+}
+
+async function generateMeasured(pipe, LogitsProcessor, opts) {
+  const {prompt, mode='apex',tokens=32,topK=40,topP=.95,temperature=.8,seed=1234}=opts;
+  const controlled=mode==='apex'||mode==='reference';
+  let proc=null;
+  const config={max_new_tokens:tokens, return_full_text:false, do_sample:!controlled && temperature>0,
+    // The processor performs sampling then forces greedy selection.
+    // Do not apply Transformers.js' own temperature/top-k/top-p twice.
+    ...(controlled ? {logits_processor: []} : {top_k:topK||0,top_p:topP,temperature:Math.max(temperature,.0001)})
+  };
+  if(controlled) {
+    proc=createSelectionProcessor(LogitsProcessor,{algorithm:mode,topK,topP,temperature,seed});
+    config.logits_processor=[proc];
+  }
+  const t0=performance.now();
+  const result=await pipe(prompt,config);
+  const elapsed=performance.now()-t0;
+  if(controlled && proc.calls===0)throw new Error('The model did not invoke the APEX logits processor. No benchmark result is valid.');
+  // In the native path the text-generation pipeline may stop at EOS before
+  // max_new_tokens, without exposing the raw generated token count.
+  // Re-encoding the returned text is an estimate, not an exact token count.
+  let nativeEstimate=null;
+  if (!controlled) {
+    try {
+      const encoded=pipe.tokenizer?.encode?.(getGeneratedText(result), {add_special_tokens:false});
+      if(encoded?.length)nativeEstimate=encoded.length;
+    } catch {}
+  }
+  const generated=proc?.calls ?? nativeEstimate ?? tokens;
+  return {mode,model:opts.model||'',tokens:generated,requested:tokens,totalMs:elapsed,tokensSec:1000*generated/elapsed,
+    samplingMs:proc?.samplingMs??null,maskingMs:proc?.tensorMs??null,ids:proc?.ids??null,
+    tokenCountEstimate:!controlled,tokenCountMethod:controlled?'processor callback count':nativeEstimate?'re-encoded decoded text':'requested maximum (upper bound)',
+    text:getGeneratedText(result),backend:opts.device||'',timestamp:new Date().toISOString()};
+}
+
+const $=s=>document.querySelector(s),state={runtime:null,pipe:null,model:null,device:null,dtype:null,results:[],micro:[],loading:false,running:false};
+const buttons=['#load','#probe','#run','#race','#micro'];
+function busy(value){state.running=value;buttons.forEach(k=>$(k).disabled=value||((k==='#run'||k==='#race')&&!state.pipe));}
+function log(text){const l=$('#log');l.textContent=`[${new Date().toLocaleTimeString()}] ${text}\n`+l.textContent.slice(0,7000);}
+function err(e){const msg=e?.stack||e?.message||String(e);log(`ERROR: ${msg}`);$('#progress').textContent=String(e.message||e).slice(0,220);}
+function settings(){const v=id=>Number($(id).value);const tokens=v('#tokens'),topK=v('#topk'),topP=v('#topp'),temperature=v('#temp'),seed=v('#seed');if(!Number.isInteger(tokens)||tokens<2||tokens>256)throw Error('Tokens must be 2–256');if(!Number.isInteger(topK)||topK<0)throw Error('top-k must be a nonnegative integer');if(!(topP>0&&topP<=1))throw Error('top-p must be in (0,1]');if(!(temperature>=0))throw Error('temperature cannot be negative');return {tokens,topK,topP,temperature,seed,prompt:$('#prompt').value,model:state.model,device:state.device};}
+function render(){
+ const rows=state.results,table=$('#table');table.innerHTML='';for(const r of rows){const tr=document.createElement('tr');const parity=r.mode==='native'?'Uncontrolled':(rows.find(x=>x.mode==='reference')?.ids?.join(',')===r.ids?.join(',')?'Exact':'—');for(const [i,x] of [r.mode,r.tokens,r.totalMs.toFixed(1),r.samplingMs==null?'—':r.samplingMs.toFixed(2),r.tokensSec.toFixed(1),parity].entries()){const td=document.createElement('td');td.textContent=x;if(i>0&&i<5)td.className='num';tr.append(td);}table.append(tr);}
+ for(const [mode,id] of [['apex','#apex-tps'],['reference','#ref-tps'],['native','#native-tps']])$(id).textContent=rows.find(x=>x.mode===mode)?.tokensSec.toFixed(1)||'—';
+ const a=rows.find(x=>x.mode==='apex'),b=rows.find(x=>x.mode==='reference');$('#speedup').textContent=a&&b?(a.tokensSec/b.tokensSec).toFixed(2)+'×':'—';
+ const max=Math.max(1,...rows.map(x=>x.tokensSec));for(const [i,mode] of ['apex','reference','native'].entries())$('#bars').children[i].style.height=`${Math.max(5,100*(rows.find(x=>x.mode===mode)?.tokensSec||0)/max)}%`;$('#export').disabled=!(rows.length||state.micro.length);
+}
+function modelId(){return $('#model').value==='custom'?$('#repo').value.trim():$('#model').value;}
+$('#model').addEventListener('change',()=>$('#repo').disabled=$('#model').value!=='custom');
+$('#system').textContent=(navigator.gpu?'WebGPU API detected':'WebGPU unavailable')+' · '+(navigator.userAgent.includes('Android')?'Android':'Desktop')+' · CPU fallback';
+$('#load').addEventListener('click',async()=>{busy(true);state.pipe=null;try{
+ const model=modelId();if(!model||!/^[-\w.]+\/[-\w.]+$/.test(model))throw Error('Choose a valid Hugging Face model repository');
+ log('Importing Transformers.js runtime from CDN...');state.runtime ||= await getRuntime({version:'4.3.2'});
+ let device=$('#device').value;if(device==='auto')device=navigator.gpu?'webgpu':'wasm';if(device==='webgpu'&&!navigator.gpu)throw Error('WebGPU is not exposed by this browser. Choose WASM.');
+ let dtype=$('#dtype').value;if(dtype==='auto')dtype=device==='webgpu'?'q4f16':'q8';
+ log(`Loading ${model} (${device}, ${dtype}). Initial model download can be large.`);let last='';const progress=x=>{const file=x.file||x.name||'model';const p=x.progress==null?'':` ${Number(x.progress).toFixed(0)}%`;const status=`${file} ${x.status||''}${p}`;if(status!==last){last=status;$('#progress').textContent=status;}};
+ const pipe=await loadPipeline({runtime:state.runtime,model,device,dtype,progress});state.pipe=pipe;state.model=model;state.device=device;state.dtype=dtype;state.results=[];$('#loaded-pill').textContent='READY';$('#progress').textContent='Model loaded locally. Ready to benchmark.';log(`Model ready: ${model}.`);render();
+ }catch(e){err(e);$('#loaded-pill').textContent='ERROR';}finally{busy(false);}});
+async function one(mode){const opts={...settings(),mode};log(`Generating ${opts.tokens} tokens with ${mode}...`);const result=await generateMeasured(state.pipe,state.runtime.LogitsProcessor,opts);state.results=state.results.filter(x=>x.mode!==mode);state.results.push(result);$('#response').textContent=result.text;log(`${mode}: ${result.tokens} steps, ${result.totalMs.toFixed(1)} ms, ${result.tokensSec.toFixed(1)} tok/s; selector ${result.samplingMs?.toFixed(1)??'unmeasured'} ms.`);render();return result;}
+$('#run').addEventListener('click',async()=>{busy(true);try{await one($('#mode').value);}catch(e){err(e)}finally{busy(false)}});
+$('#race').addEventListener('click',async()=>{busy(true);state.results=[];render();try{
+ const modes=['apex','reference','native']; // rotate method order on successive button presses
+ const shift=(state.round||0)%3;state.round=(state.round||0)+1;
+ for(let i=0;i<3;i++)await one(modes[(i+shift)%3]);
+ const a=state.results.find(x=>x.mode==='apex'),b=state.results.find(x=>x.mode==='reference');
+ if(a?.ids&&b?.ids&&a.ids.join(',')!==b.ids.join(','))log('WARNING: APEX and reference token IDs differ; do not attribute timings to equivalent output.');
+ }catch(e){err(e)}finally{busy(false)}});
+function sampleLogits(n,seed){const rng=makeRng(seed);const a=new Float32Array(n);for(let i=0;i<n;i++)a[i]=Math.fround((rng()+rng()+rng()+rng()-2)*3.6);return a;}
+function timing(logits,opts,algorithm,reps){const vals=[];for(let batch=0;batch<3;batch++){const t=performance.now();for(let i=0;i<reps;i++)selectToken(logits,{...opts,algorithm,u:((i*0.6180339887498949)%1)});vals.push((performance.now()-t)/reps);}return vals.sort((a,b)=>a-b)[1];}
+async function microBench(){const results=[];const ks=[40,0];for(const n of [8192,49152,128000]){const l=sampleLogits(n,733+n);for(const k of ks){const opts={topK:k,topP:k?0.95:0.9,temperature:.8};const reps=n>50000?5:10;
+ // Warm both implementations before comparing.
+ selectToken(l,{...opts,algorithm:'apex'});selectToken(l,{...opts,algorithm:'reference'});
+ const a=timing(l,opts,'apex',reps),b=timing(l,opts,'reference',reps);
+ results.push({vocabulary:n,topK:k,topP:opts.topP,apexMs:a,referenceMs:b,speedup:b/a});await new Promise(resolve=>setTimeout(resolve,0));}}
+ state.micro=results;$('#micro-table').innerHTML='<table class="results"><thead><tr><th>Vocab</th><th>Sampling</th><th class="num">APEX</th><th class="num">Reference</th><th class="num">Speedup</th></tr></thead><tbody>'+results.map(r=>`<tr><td>${r.vocabulary.toLocaleString()}</td><td>${r.topK?'top-40':'top-p .90'}</td><td class="num">${r.apexMs.toFixed(2)} ms</td><td class="num">${r.referenceMs.toFixed(2)} ms</td><td class="num">${r.speedup.toFixed(2)}×</td></tr>`).join('')+'</tbody></table>';$('#export').disabled=false;log('Offline benchmark complete; results are selection microbenchmarks, not tokens/sec.');}
+$('#micro').addEventListener('click',async()=>{busy(true);try{await microBench()}catch(e){err(e)}finally{busy(false)}});
+$('#probe').addEventListener('click',()=>{const x=sampleLogits(49152,5);const opts={topK:0,topP:.9,temperature:.8,u:.6};const a=selectToken(x,{...opts,algorithm:'apex'}),b=selectToken(x,{...opts,algorithm:'reference'});log(`Offline parity probe on 49,152 logits: ${a===b?'PASS':'FAIL'}; token ${a}.`);});
+$('#export').addEventListener('click',()=>{const data={version:'0.2.0',source:'CHROMA APEX browser inference lab',model:state.model,device:state.device,dtype:state.dtype,userAgent:navigator.userAgent,webgpu:!!navigator.gpu,date:new Date().toISOString(),note:'Only results marked as model inference derive from actual pretrained generation; offline sampler microbenchmarks use synthetic logits.',modelResults:state.results,microbench:state.micro};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='chroma-browser-inference-results.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+</script></body></html>
